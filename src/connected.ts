@@ -1,22 +1,6 @@
 import { NS } from "@ns";
 import { PrintTable, ColorPrint, DefaultStyle } from "tables";
-
-
-function getAllServers(ns: NS): string[] {
-  let servers: Set<string> = new Set<string>();
-  let queue: string[] = ['home'];
-
-  while(true) {
-    const host = queue.pop();
-    if (host === undefined) break;
-
-    servers.add(host);
-    const connectedServers = ns.scan(host);
-    queue.push(...connectedServers.filter(server => !servers.has(server)));
-  }
-
-  return Array.from(servers);
-}
+import { getAllServers } from "util";
 
 function showConnected(ns: NS, parent: string, host: string, pre: string): void {
   const connectedServers = ns.scan(host);
@@ -51,9 +35,8 @@ function isHackable(ns: NS, s: string): boolean {
 }
 
 export async function main(ns: NS): Promise<void> {
-  //showConnected(ns, '', 'home', '');
-
   ns.ui.clearTerminal();
+  // showConnected(ns, '', 'home', '');
 
   // for (const server of getAllServers(ns)) {
   //   ns.tprintf(`${server}`);
@@ -61,27 +44,28 @@ export async function main(ns: NS): Promise<void> {
 
   // ns.tprintf(`${ns.ui.windowSize()}`)
   const sortedServers = getAllServers(ns).sort((a, b) => ns.getServerRequiredHackingLevel(a) - ns.getServerRequiredHackingLevel(b));
-  const filteredServers = sortedServers.filter(s => ns.getServerMaxMoney(s) > 0);
+  const filteredServers = sortedServers//.filter(s => ns.getServerMaxMoney(s) > 0);
   const hackableServerCount = filteredServers.filter(s => isHackable(ns, s)).length;
-  const truncatedServers = filteredServers//.slice(0, hackableServerCount + 5);
+  const truncatedServers = filteredServers.slice(0, hackableServerCount + 5);
   
-  let data = truncatedServers.map(s => {
-    const hackLevelStr = ns.getServerRequiredHackingLevel(s).toString();
+  const data = truncatedServers.map(s => {
     return [
-      { color: serverHackedStatusColor(ns, s), text: s },
-      hackLevelStr.padStart(5),
+      { color: serverHackedStatusColor(ns, s), text: ` ${s}` },
+      ns.getServerRequiredHackingLevel(s).toString().padStart(6),
+      ns.getServerNumPortsRequired(s).toString().padStart(6),
       ns.getServerBaseSecurityLevel(s).toString().padStart(9),
-      ns.formatRam(ns.getServerMaxRam(s), 0).padStart(6),
-      ns.formatNumber(ns.getServerMaxMoney(s),3, 1000, true).padStart(9)
+      ns.formatRam(ns.getServerMaxRam(s), 0).padStart(7),
+      ns.formatNumber(ns.getServerMaxMoney(s),3, 1000, true).padStart(10)
     ]
   });
 
 	const columns = [
-		{ header: 'Servers', width: 19 },
-		{ header: 'Level', width: 6, pad: 1 },
-		{ header: 'Base Sec.', width: 10, pad: 1 },
-		{ header: '   Ram', width: 7, pad: 1 },
-		{ header: '    Money', width: 10 }
+		{ header: ' Servers', width: 20 },
+		{ header: ' Level', width: 7 },
+    { header: ' Ports', width: 7 },
+		{ header: ' Base Sec', width: 10 },
+		{ header: '    Ram', width: 8 },
+		{ header: '     Money', width: 11 }
 	];
 
 	PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
