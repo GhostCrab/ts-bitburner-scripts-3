@@ -11,7 +11,7 @@ import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScri
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 100;
+const MS_BETWEEN_OPERATIONS = 10;
 
 interface IHackBatch {
   growThreads: number;
