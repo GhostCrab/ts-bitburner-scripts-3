@@ -35,7 +35,7 @@ function isHackable(ns: NS, s: string): boolean {
 }
 
 export async function main(ns: NS): Promise<void> {
-  ns.ui.clearTerminal();
+  //ns.ui.clearTerminal();
   // showConnected(ns, '', 'home', '');
 
   // for (const server of getAllServers(ns)) {
