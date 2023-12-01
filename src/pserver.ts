@@ -15,28 +15,32 @@ export async function main(ns: NS): Promise<void> {
     return [
       { color: ns.getPurchasedServerCost(sz) <= ns.getServerMoneyAvailable('home') ? 'green' : 'white', text: ns.formatRam(sz).padStart(9) },
       { color: ns.getPurchasedServerCost(sz) <= ns.getServerMoneyAvailable('home') ? 'green' : 'white', text: ns.formatNumber(ns.getPurchasedServerCost(sz), 3, 1000, true).padStart(11) },
+      { color: ns.getPurchasedServerCost(sz) <= ns.getServerMoneyAvailable('home') ? 'green' : 'white', text: Math.log2(sz).toString() },
     ]
   });
 
 	const columns = [
 		{ header: '      RAM', width: 10 },
-		{ header: '       Cost', width: 12 }
+		{ header: '       Cost', width: 12 },
+    { header: '       pow', width: 12 }
 	];
 
-	PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
+	//PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
 
   if (ns.args.length > 0) {
-    const purchasedServers = ns.getPurchasedServers().sort((a, b) => {
-      const aval = Number(a.split('-')[1]);
-      const bval = Number(b.split('-')[1]);
-      return aval - bval;
-    });
+    while (ns.getPurchasedServerCost(maxSize) <= ns.getServerMoneyAvailable('home') && ns.getPurchasedServers().length < 25 && maxSize === Math.pow(2, 20)) {
+      const purchasedServers = ns.getPurchasedServers().sort((a, b) => {
+        const aval = Number(a.split('-')[1]);
+        const bval = Number(b.split('-')[1]);
+        return aval - bval;
+      });
 
-    let newServerNumber = 1;
-    if (purchasedServers.length > 0)
-      newServerNumber = Number(purchasedServers[purchasedServers.length-1].split('-')[1])+1;
+      let newServerNumber = 1;
+      if (purchasedServers.length > 0)
+        newServerNumber = Number(purchasedServers[purchasedServers.length-1].split('-')[1])+1;
 
-    ns.tprintf(`Purchasing Server PS-${newServerNumber} with ${ns.formatRam(maxSize)} RAM`);
-    ns.purchaseServer(`PS-${newServerNumber.toString().padStart(2, '0')}`, maxSize);
+      ns.tprintf(`Purchasing Server PS-${newServerNumber} with ${ns.formatRam(maxSize)} RAM`);
+      ns.purchaseServer(`PS-${newServerNumber.toString().padStart(2, '0')}`, maxSize);
+    }
   }
 }

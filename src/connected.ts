@@ -36,7 +36,7 @@ function isHackable(ns: NS, s: string): boolean {
 
 export async function main(ns: NS): Promise<void> {
   //ns.ui.clearTerminal();
-  // showConnected(ns, '', 'home', '');
+  showConnected(ns, '', 'home', '');
 
   // for (const server of getAllServers(ns)) {
   //   ns.tprintf(`${server}`);
@@ -48,7 +48,7 @@ export async function main(ns: NS): Promise<void> {
   const hackableServerCount = filteredServers.filter(s => isHackable(ns, s)).length;
   const truncatedServers = filteredServers.slice(0, hackableServerCount + 5);
   
-  const data = truncatedServers.map(s => {
+  const data = sortedServers.map(s => {
     return [
       { color: serverHackedStatusColor(ns, s), text: ` ${s}` },
       ns.getServerRequiredHackingLevel(s).toString().padStart(6),
