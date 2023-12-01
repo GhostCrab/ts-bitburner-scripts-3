@@ -2,7 +2,7 @@ import { NS } from "@ns";
 
 export async function main(ns: NS): Promise<void> {
   const targetFavor = ns.formulas.reputation.calculateFavorToRep(150);
-  const currentRep = 142;
+  const currentRep = 81;
   const currentFavor = ns.formulas.reputation.calculateFavorToRep(currentRep);
   const favorNeeded = targetFavor - currentFavor;
   ns.tprintf(`Total favor needed for 150 rep: ${ns.formatNumber(targetFavor, 0, 1000)}`);

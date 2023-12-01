@@ -11,7 +11,7 @@ import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScri
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 100;
+const MS_BETWEEN_OPERATIONS = 10;
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export function autocomplete(data: any, args: any): string[] {
@@ -155,7 +155,6 @@ async function cycle(ns: NS, target: string): Promise<void> {
     const batch = new HackBatch();
     const batchMSOffset = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4);
     
-    // using getPlayer() on purpose here since these processes start at the beginning of a cycle before level up
     batch.weakenTime = weakenTime;
     batch.growTime = growTime;
     batch.hackTime = hackTime;
@@ -168,6 +167,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     // start with hack 50%
     batch.hackThreads = Math.ceil(.8 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
+    let missedOnce = false;
     while (true) {
       if (batch.hackThreads <= 0) {
         totalThreads = 0;
@@ -188,10 +188,32 @@ async function cycle(ns: NS, target: string): Promise<void> {
       if (batch.totalThreads() <= totalThreads) {
         totalThreads -= batch.totalThreads();
         batches.push(batch);
+        
+        if (missedOnce) 
+          totalThreads = 0;
+
         break;
       }
 
-      batch.hackThreads--;
+      batch.hackThreads = Math.floor(batch.hackThreads * 0.75);
+      missedOnce = true;
+    }
+
+    // duplicate batch until there is no space left
+    const batchThreads = batch.totalThreads();
+    const additionalBatches = Math.floor(totalThreads / batchThreads);
+    for (let i = 0; i < additionalBatches; ++i) {
+      const newBatch = new HackBatch;
+      Object.assign(newBatch, batch);
+
+      const batchMSOffset = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4);
+      newBatch.hackMSBuf =  batchMSOffset - newBatch.hackTime - MS_BETWEEN_OPERATIONS;
+      newBatch.hackWeakenMsBuf = batchMSOffset - newBatch.weakenTime;
+      newBatch.growMSBuf = batchMSOffset - newBatch.growTime + MS_BETWEEN_OPERATIONS;
+      newBatch.growWeakenMSBuf = batchMSOffset - newBatch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
+      
+      batches.push(newBatch);
+      totalThreads -= newBatch.totalThreads();
     }
   }
 
@@ -202,15 +224,6 @@ async function cycle(ns: NS, target: string): Promise<void> {
   // ns.tprintf(`${target}: First Batch | ht:${batches[0].hackThreads} | hwt:${batches[0].hackWeakenThreads} | gt:${batches[0].growThreads} | gwt:${batches[0].growWeakenThreads}`)
   // ns.tprintf(`${target}: Second Batch | ht:${batches[1].hackThreads} | hwt:${batches[1].hackWeakenThreads} | gt:${batches[1].growThreads} | gwt:${batches[1].growWeakenThreads}`)
   // ns.tprintf(`${target}: Last Batch | ht:${batches[batches.length-1].hackThreads} | hwt:${batches[batches.length-1].hackWeakenThreads} | gt:${batches[batches.length-1].growThreads} | gwt:${batches[batches.length-1].growWeakenThreads}`)
-
-  for (const batch of batches) {
-    if (!Number.isInteger(batch.growThreads) ||
-        !Number.isInteger(batch.growWeakenThreads) ||
-        !Number.isInteger(batch.hackThreads) ||
-        !Number.isInteger(batch.hackWeakenThreads) ) {
-      ns.tprintf(`${batch.growThreads} ${batch.growWeakenThreads} ${batch.hackThreads} ${batch.hackWeakenThreads}`);
-    }
-  }
 
   const scripts = getScriptCalls(batches);
   let script = scripts.shift();

@@ -25,10 +25,26 @@ export async function main(ns: NS): Promise<void> {
     { header: '       pow', width: 12 }
 	];
 
-	//PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
+	PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
 
-  if (ns.args.length > 0) {
-    while (ns.getPurchasedServerCost(maxSize) <= ns.getServerMoneyAvailable('home') && ns.getPurchasedServers().length < 25 && maxSize === Math.pow(2, 20)) {
+  // if (ns.args.length > 0) {
+  //   while (ns.getPurchasedServerCost(maxSize) <= ns.getServerMoneyAvailable('home') && ns.getPurchasedServers().length < 25 && maxSize === Math.pow(2, 20)) {
+  //     const purchasedServers = ns.getPurchasedServers().sort((a, b) => {
+  //       const aval = Number(a.split('-')[1]);
+  //       const bval = Number(b.split('-')[1]);
+  //       return aval - bval;
+  //     });
+
+  //     let newServerNumber = 1;
+  //     if (purchasedServers.length > 0)
+  //       newServerNumber = Number(purchasedServers[purchasedServers.length-1].split('-')[1])+1;
+
+  //     ns.tprintf(`Purchasing Server PS-${newServerNumber} with ${ns.formatRam(maxSize)} RAM`);
+  //     ns.purchaseServer(`PS-${newServerNumber.toString().padStart(2, '0')}`, maxSize);
+  //   }
+  // }
+
+    if (ns.args.length > 0) {
       const purchasedServers = ns.getPurchasedServers().sort((a, b) => {
         const aval = Number(a.split('-')[1]);
         const bval = Number(b.split('-')[1]);
@@ -41,6 +57,5 @@ export async function main(ns: NS): Promise<void> {
 
       ns.tprintf(`Purchasing Server PS-${newServerNumber} with ${ns.formatRam(maxSize)} RAM`);
       ns.purchaseServer(`PS-${newServerNumber.toString().padStart(2, '0')}`, maxSize);
-    }
   }
 }
