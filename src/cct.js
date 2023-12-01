@@ -51,7 +51,7 @@ async function solve(type, data, server, contract, ns) {
 			solution = mergeOverlap(data);
 			break;
 		case "Find All Valid Math Expressions":
-			solution = solverWaysToExpress(ns, data);
+			solution = solveFindAllValidMathExpressions(data);
 			break;
 		case "Subarray with Maximum Sum":
 			solution = solverLargestSubset(ns, data);
@@ -563,6 +563,40 @@ function solverWaysToExpress(ns, arrayData) {
 	}
 
 	return JSON.stringify(validExpressions);
+}
+
+function solveFindAllValidMathExpressions(arrayData) {
+  const num = arrayData[0];
+  const target = arrayData[1];
+
+  function helper(res, path, num, target, pos, evaluated, multed) {
+      if (pos === num.length) {
+          if (target === evaluated) {
+              res.push(path);
+          }
+          return;
+      }
+
+      for (let i = pos; i < num.length; ++i) {
+          if (i != pos && num[pos] == "0") {
+              break;
+          }
+          const cur = parseInt(num.substring(pos, i + 1));
+
+          if (pos === 0) {
+              helper(res, path + cur, num, target, i + 1, cur, cur);
+          } else {
+              helper(res, path + "+" + cur, num, target, i + 1, evaluated + cur, cur);
+              helper(res, path + "-" + cur, num, target, i + 1, evaluated - cur, -cur);
+              helper(res, path + "*" + cur, num, target, i + 1, evaluated - multed + multed * cur, multed * cur);
+          }
+      }
+  }
+
+  const result = [];
+  helper(result, "", num, target, 0, 0, 0);
+
+  return result;
 }
 
 function solverLargestSubset(ns, arrayData) {

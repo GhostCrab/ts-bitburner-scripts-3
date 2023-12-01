@@ -143,7 +143,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.8 / ns.hackAnalyze(target));
+    batch.hackThreads = Math.ceil(.3 / ns.hackAnalyze(target));
 
     while (true) {
       if (batch.hackThreads <= 0) {
@@ -188,16 +188,10 @@ async function cycle(ns: NS, target: string): Promise<void> {
   const cycleThreads = batches.reduce((count, batch) => count + batch.totalThreads(), 0);
   const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
   const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
-  ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
-
-  for (const batch of batches) {
-    if (!Number.isInteger(batch.growThreads) ||
-        !Number.isInteger(batch.growWeakenThreads) ||
-        !Number.isInteger(batch.hackThreads) ||
-        !Number.isInteger(batch.hackWeakenThreads) ) {
-      ns.tprintf(`${batch.growThreads} ${batch.growWeakenThreads} ${batch.hackThreads} ${batch.hackWeakenThreads}`);
-    }
-  }
+  ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+  ns.tprintf(`${target}: Batch 1 | ht:${batches[0].hackThreads} | hwt:${batches[0].hackWeakenThreads} | gt:${batches[0].growThreads} | gwt:${batches[0].growWeakenThreads}`)
+  ns.tprintf(`${target}: Batch 2 | ht:${batches[1].hackThreads} | hwt:${batches[1].hackWeakenThreads} | gt:${batches[1].growThreads} | gwt:${batches[1].growWeakenThreads}`)
+  ns.tprintf(`${target}: Batch N | ht:${batches[batches.length-1].hackThreads} | hwt:${batches[batches.length-1].hackWeakenThreads} | gt:${batches[batches.length-1].growThreads} | gwt:${batches[batches.length-1].growWeakenThreads}`)
 
   const scripts = getScriptCalls(batches);
   let script = scripts.shift();
