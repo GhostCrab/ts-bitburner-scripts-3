@@ -230,5 +230,5 @@ export async function main(ns: NS): Promise<void> {
       ns.singularity.purchaseAugmentation(aug.faction, aug.name);
   }
 
-  while (ns.singularity.purchaseAugmentation('BitRunners', "NeuroFlux Governor"));
+  while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
 }

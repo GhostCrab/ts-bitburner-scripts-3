@@ -6,6 +6,11 @@ const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
 const MS_BETWEEN_OPERATIONS = 100;
 
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+export function autocomplete(data: any, args: any): string[] {
+  return data.servers; // This script autocompletes the list of servers.
+}
+
 interface IHackBatch {
   growThreads: number;
   growWeakenThreads: number;
