@@ -214,6 +214,9 @@ async function cycle(ns: NS, target: string): Promise<void> {
       
       batches.push(newBatch);
       totalThreads -= newBatch.totalThreads();
+
+      if(batches.length >= 5000)
+        totalThreads = 0;
     }
   }
 
