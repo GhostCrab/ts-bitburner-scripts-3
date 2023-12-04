@@ -174,6 +174,8 @@ async function cycle(ns: NS, target: string): Promise<void> {
 
       batch.hackThreads--;
     }
+
+    if (batches.length > 1000) break;
   }
 
   // if we're doing a lot of batches, cancel the last 2 and re-assing the threads to grow/weaken to prep for the next cycle
