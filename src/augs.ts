@@ -170,7 +170,7 @@ export async function main(ns: NS): Promise<void> {
   for (const faction of ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))) {
     const factionAugs = ns.singularity.getAugmentationsFromFaction(faction);
     for (const aug of factionAugs) {
-      //if (!augs.some(a => a.name === aug))
+      if (!augs.some(a => a.name === aug))
         augs.push(new Aug(ns, aug, faction));
     }
   }
@@ -222,13 +222,13 @@ export async function main(ns: NS): Promise<void> {
   }
 
   // buy in order from most to least expensive, buying prereqs first
-  let cash = ns.getServerMoneyAvailable('home');
-  while (augs.length > 0) {
-    const aug = augs.shift();
+  // let cash = ns.getServerMoneyAvailable('home');
+  // while (augs.length > 0) {
+  //   const aug = augs.shift();
     
-    if (aug)
-      ns.singularity.purchaseAugmentation(aug.faction, aug.name);
-  }
+  //   if (aug)
+  //     ns.singularity.purchaseAugmentation(aug.faction, aug.name);
+  // }
 
-  while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
+  // while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
 }

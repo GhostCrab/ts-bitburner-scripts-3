@@ -160,7 +160,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
       const current = ns.getServerMaxMoney(target);
       const future = current - (current * hackPercent);
       const growMult = current / future;
-      batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult) * 1.3);
+      batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult) * 1.5);
       batch.gain = current - future;
     
       batch.hackWeakenThreads = Math.ceil(ns.hackAnalyzeSecurity(batch.hackThreads, target) / WEAK_SEC);
