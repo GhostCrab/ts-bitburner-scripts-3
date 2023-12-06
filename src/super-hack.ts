@@ -253,18 +253,18 @@ async function cycle(ns: NS, target: string): Promise<void> {
 export async function main(ns: NS): Promise<void> {
   ns.disableLog('ALL');
 
-  const slaves = getSlaves(ns);
-
-  // copy hgw scripts to slave machines
-  for (const s of slaves) {
-    if (s === 'home') continue;
-    ns.scp(['hack.js', 'grow.js', 'weaken.js'], s);
-  }
-
   let target = 'nectar-net';
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') target = ns.args[0];
 
   while (true) {
+    const slaves = getSlaves(ns);
+
+    // copy hgw scripts to slave machines
+    for (const s of slaves) {
+      if (s === 'home') continue;
+      ns.scp(['hack.js', 'grow.js', 'weaken.js'], s);
+    }
+    
     await cycle(ns, target);
   }
 }

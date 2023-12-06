@@ -175,10 +175,10 @@ export async function main(ns: NS): Promise<void> {
     }
   }
 
-  //augs = augs.filter(a => a.canBuy()).sort((a, b) => b.price - a.price);
-  augs = augs.sort((a, b) => b.price - a.price);
+  augs = augs.filter(a => a.canBuy()).sort((a, b) => b.price - a.price);
+  //augs = augs.sort((a, b) => b.price - a.price);
 
-  augs = augs.filter(a => a.isHack);
+  //augs = augs.filter(a => a.isHack);
   augs = augs.filter(a => a.name !== "NeuroFlux Governor");
 
   // shift prereqs higher in the list if they're in the list. If they're not in the list, remove the aug with prereqs
@@ -222,13 +222,13 @@ export async function main(ns: NS): Promise<void> {
   }
 
   // buy in order from most to least expensive, buying prereqs first
-  // let cash = ns.getServerMoneyAvailable('home');
-  // while (augs.length > 0) {
-  //   const aug = augs.shift();
+  let cash = ns.getServerMoneyAvailable('home');
+  while (augs.length > 0) {
+    const aug = augs.shift();
     
-  //   if (aug)
-  //     ns.singularity.purchaseAugmentation(aug.faction, aug.name);
-  // }
+    if (aug)
+      ns.singularity.purchaseAugmentation(aug.faction, aug.name);
+  }
 
-  // while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
+  while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
 }
