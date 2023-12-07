@@ -216,8 +216,10 @@ async function cycle(ns: NS, target: string): Promise<void> {
       batches.push(newBatch);
       totalThreads -= newBatch.totalThreads();
 
-      if(batches.length >= 5000)
+      if(batches.length >= 5000) {
         totalThreads = 0;
+        break;
+      }
     }
   }
 
@@ -244,7 +246,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
       script.threads -= scriptThreads;
 
       if (script.threads === 0)
-        script = scripts.shift();      
+        script = scripts.shift();
     }
   }
 
@@ -270,7 +272,7 @@ export async function main(ns: NS): Promise<void> {
       if (s === 'home') continue;
       ns.scp(['hack.js', 'grow.js', 'weaken.js'], s);
     }
-    
+
     await cycle(ns, target);
   }
 }
