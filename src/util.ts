@@ -65,6 +65,7 @@ export function getSlaves(ns: NS) {
 }
 
 export function getTotalThreads(ns: NS, slaves: string[], homeReserve = HOME_RESERVE) {
+  if (homeReserve > ns.getServerMaxRam('home')) homeReserve = ns.getServerMaxRam('home');
   let totalThreads = slaves.reduce((count, slave) => count + Math.floor(ns.getServerMaxRam(slave) / HGW_RAM), 0);
 
   if(slaves.includes('home')) {
@@ -75,6 +76,7 @@ export function getTotalThreads(ns: NS, slaves: string[], homeReserve = HOME_RES
 }
 
 export function getSlaveThreads(ns: NS, slave: string, homeReserve = HOME_RESERVE) {
+  if (homeReserve > ns.getServerMaxRam('home')) homeReserve = ns.getServerMaxRam('home');
   let slaveThreads = Math.floor(ns.getServerMaxRam(slave) / HGW_RAM);
   if (slave === 'home') {
     slaveThreads -= Math.ceil(homeReserve / HGW_RAM)

@@ -1,5 +1,6 @@
 import { NS } from "@ns";
 import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScripts } from "util";
+import { ColorPrint } from "./tables";
 
 // TODO:
 // [x] Use Home RAM, leaving 32GB free for other execution
@@ -130,7 +131,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
 
     if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
       growSecIncrease = GROW_SEC * totalThreads;
-      batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
+      batch.growWeakenThreads = Math.min(Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC), totalThreads);
       batch.growThreads = totalThreads - batch.growWeakenThreads;
     }
 
@@ -165,7 +166,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.8 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
     let missedOnce = false;
     while (true) {
@@ -255,6 +256,11 @@ export async function main(ns: NS): Promise<void> {
 
   let target = 'nectar-net';
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') target = ns.args[0];
+
+  if (!ns.hasRootAccess(target)) {
+    ColorPrint(ns, ['Red1', `SUPER HACK ERROR: Unable to hack ${target} without root access`]);
+    return;
+  }
 
   while (true) {
     const slaves = getSlaves(ns);

@@ -71,8 +71,8 @@ class Aug implements IAug{
   constructor(ns: NS, name: string, faction: string) {
     this.name = name;
     this.faction = faction;
-    this.installed = ns.singularity.getOwnedAugmentations(false).includes(name);
-    this.purchased = ns.singularity.getOwnedAugmentations(true).includes(name);
+    this.installed = ns.singularity.getOwnedAugmentations(false).indexOf(name) !== -1;
+    this.purchased = ns.singularity.getOwnedAugmentations(true).indexOf(name) !== -1;
     this.price = ns.singularity.getAugmentationBasePrice(name);
     this.requiredRep = ns.singularity.getAugmentationRepReq(name);
     try {
@@ -118,6 +118,7 @@ class Aug implements IAug{
       { color: this.augColor(), text: ns.formatNumber(this.requiredRep, 3, 1000, true).padStart(10) },
       { color: this.augColor(), text: `${this.purchasable?'YES':'NO'}`.padStart(4) },
       { color: this.augColor(), text: `${this.affordable?'YES':'NO'}`.padStart(4) },
+      { color: this.augColor(), text: `${this.canBuy()?'YES':'NO'}`.padStart(4) },
       { color: this.augColor(), text: `${this.preqreqs.length}`.padStart(4) }
     ];
   }
@@ -132,6 +133,7 @@ class Aug implements IAug{
       { header: '       Rep', width: 11 },
       { header: ' PUR', width: 5 },
       { header: ' AFF', width: 5 },
+      { header: ' BUY', width: 5 },
       { header: ' PRE', width: 5 },
     ];
   }
@@ -175,7 +177,7 @@ export async function main(ns: NS): Promise<void> {
     }
   }
 
-  augs = augs.filter(a => a.canBuy()).sort((a, b) => b.price - a.price);
+  augs = augs.filter(a => a.canBuy() || a.purchased).sort((a, b) => b.price - a.price);
   //augs = augs.sort((a, b) => b.price - a.price);
 
   //augs = augs.filter(a => a.isHack);
@@ -214,7 +216,10 @@ export async function main(ns: NS): Promise<void> {
     }
   }
 
-  PrintTable(ns, augs.map(a => a.shortTableData(ns)), Aug.shortTableCols(), DefaultStyle(), ColorPrint);
+  augs = augs.filter(a => a.canBuy());
+
+  //PrintTable(ns, augs.map(a => a.shortTableData(ns)), Aug.shortTableCols(), DefaultStyle(), ColorPrint);
+  PrintTable(ns, augs.map(a => a.tableData(ns)), Aug.tableCols(), DefaultStyle(), ColorPrint);
   
   const mult = augs.find(a => a.name === "HemoRecirculator")?.multipliers;
   if (mult) {
@@ -222,13 +227,15 @@ export async function main(ns: NS): Promise<void> {
   }
 
   // buy in order from most to least expensive, buying prereqs first
-  let cash = ns.getServerMoneyAvailable('home');
-  while (augs.length > 0) {
-    const aug = augs.shift();
-    
-    if (aug)
-      ns.singularity.purchaseAugmentation(aug.faction, aug.name);
-  }
+  if (ns.args.length > 0) {
+    //let cash = ns.getServerMoneyAvailable('home');
+    while (augs.length > 0) {
+      const aug = augs.shift();
+      
+      if (aug)
+        ns.singularity.purchaseAugmentation(aug.faction, aug.name);
+    }
 
-  while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
+    while (ns.singularity.purchaseAugmentation(ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))[0], "NeuroFlux Governor"));
+  }
 }

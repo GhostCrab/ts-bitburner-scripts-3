@@ -22,7 +22,7 @@ function crackAndNuke(ns: NS, s: string): void {
   ns.nuke(s);
 }
 
-function getConnectedPaths(ns: NS, current: string = 'home', path: string[] = [], paths: Record<string, string[]> = {}) {
+function getConnectedPaths(ns: NS, current = 'home', path: string[] = [], paths: Record<string, string[]> = {}) {
   paths[current] = [...path, current];
   
   let parent = '';
@@ -37,9 +37,6 @@ function getConnectedPaths(ns: NS, current: string = 'home', path: string[] = []
 }
 
 export async function main(ns: NS): Promise<void> {
-  // ns.tprintf(`${getConnectedPaths(ns)['The-Cave']}`);
-  const paths = getConnectedPaths(ns);
-
   const portCracks = ["BruteSSH.exe", "FTPCrack.exe", "relaySMTP.exe", "HTTPWorm.exe", "SQLInject.exe"];
   const portCrackCount = portCracks.reduce((count, crack) => {
     if (ns.fileExists(crack, "home")) count++;
