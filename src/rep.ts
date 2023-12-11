@@ -2,7 +2,7 @@ import { NS } from "@ns";
 import { ColorPrint, DefaultStyle, PrintTable } from "./tables";
 import { ALL_FACTIONS } from "./util";
 
-function getTotalFactioOnRep(ns: NS, faction: string): number {
+function getTotalFactionRep(ns: NS, faction: string): number {
   return ns.singularity.getFactionRep(faction) + ns.formulas.reputation.calculateFavorToRep(ns.singularity.getFactionFavor(faction));
 }
 
