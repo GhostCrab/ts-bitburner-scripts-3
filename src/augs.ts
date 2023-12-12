@@ -323,6 +323,7 @@ export async function main(ns: NS): Promise<void> {
   const nfgPriceMultiplier = 1.14;
   let augs: IAug[] = [];
   for (const faction of ALL_FACTIONS.sort((a, b) => ns.singularity.getFactionRep(b) - ns.singularity.getFactionRep(a))) {
+    if (ns.singularity.getFactionRep(faction) === 0) continue;
     const factionAugs = ns.singularity.getAugmentationsFromFaction(faction);
     for (const aug of factionAugs) {
       if (!augs.some(a => a.name === aug))

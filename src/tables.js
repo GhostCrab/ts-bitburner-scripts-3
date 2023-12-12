@@ -93,6 +93,7 @@ function PrintBorder(ns, columns, style, printfunc = ns.print) {
 	let printStack = [];
 	printStack.push('white', style[OPENER]);
 	for (let c = 0; c < columns.length; c++) {
+    if (columns[c].hide) continue;
 		printStack.push('white', ''.padEnd(columns[c].width, style[FILLER]));
 		if (c == columns.length - 1)
 			printStack.push('white', style[CLOSER]);
@@ -107,6 +108,7 @@ function PrintHeader(ns, columns, style, printfunc = ns.print) {
 	let printStack = [];
 	printStack.push('white', style[BAR]);
 	for (let c = 0; c < columns.length; c++) {
+    if (columns[c].hide) continue;
 		printStack.push('white', columns[c].header.padEnd(columns[c].width));
 		printStack.push('white', style[BAR]);
 	}
@@ -122,6 +124,7 @@ function PrintLine(ns, columns, data, style, printfunc = ns.print, highlight) {
 	let printStack = [];
 	printStack.push('white', style[0][BAR]);
 	for (let c = 0; c < columns.length; c++) {
+    if (columns[c].hide) continue;
 		if (data[c].style != undefined)
 			printStack.push({ style: data[c].style }, data[c].text.padEnd(columns[c].width));
 		else if (data[c].color != undefined)
@@ -225,7 +228,8 @@ export function createHTMLTableFromJSON(ns, data, columns) {
 
 	var formattedData = JSON.parse(JSON.stringify(data, columns));
 	var col = [];
-	for (var i = 0; i < formattedData.length; i++) {
+  var i;
+	for (i = 0; i < formattedData.length; i++) {
 		for (var key in formattedData[i]) {
 			if (col.indexOf(key) === -1) {
 				col.push(key);
@@ -238,13 +242,13 @@ export function createHTMLTableFromJSON(ns, data, columns) {
 
 	var tr = table.insertRow(-1);                   // TABLE ROW.
 
-	for (var i = 0; i < col.length; i++) {
+	for (i = 0; i < col.length; i++) {
 		var th = doc.createElement("th");      // TABLE HEADER.
 		th.innerHTML = col[i];
 		tr.appendChild(th);
 	}
 
-	for (var i = 0; i < formattedData.length; i++) {
+	for (i = 0; i < formattedData.length; i++) {
 
 		tr = table.insertRow(-1);
 

@@ -124,7 +124,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
   {
     const batch = new HackBatch();
     const baseWeaken = ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
-    const growMult = ns.getServerMaxMoney(target) / ns.getServerMoneyAvailable(target);
+    const growMult = ns.getServerMaxMoney(target) / (ns.getServerMoneyAvailable(target) + 1);
     batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult));
     let growSecIncrease = GROW_SEC * batch.growThreads;
     batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
@@ -166,7 +166,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    batch.hackThreads = Math.ceil(.7 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
     let missedOnce = false;
     while (true) {

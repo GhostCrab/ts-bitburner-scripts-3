@@ -61,6 +61,65 @@ interface ICycleStats {
   rate: number;
 }
 
+interface ICyclesToReady {
+  target: string;
+  cycles: number;
+  time: number;
+}
+
+function cyclesToReady(ns: NS, server: Server): ICyclesToReady {
+  const result: ICyclesToReady = {
+    target: server.hostname,
+    time: 0,
+    cycles: 0
+  }
+  try {
+    server.baseDifficulty = server.baseDifficulty || ns.getServerBaseSecurityLevel(server.hostname);
+    server.minDifficulty = server.minDifficulty || ns.getServerMinSecurityLevel(server.hostname);
+    server.hackDifficulty = server.hackDifficulty || ns.getServerSecurityLevel(server.hostname);
+
+    server.moneyAvailable = server.moneyAvailable || ns.getServerMoneyAvailable(server.hostname);
+    server.moneyMax = server.moneyMax || ns.getServerMaxMoney(server.hostname);
+
+    const slaves = getSlaves(ns);
+    const totalThreads = getTotalThreads(ns, slaves);
+
+    while (server.moneyAvailable < server.moneyMax || server.hackDifficulty > server.minDifficulty) {
+      const baseMSOffset = Math.ceil(ns.formulas.hacking.weakenTime(server, ns.getPlayer()));
+
+      const batch = new HackBatch();
+      const baseWeaken = server.hackDifficulty - server.minDifficulty;
+      batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax));
+      let growSecIncrease = GROW_SEC * batch.growThreads;
+      batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
+
+      if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
+        growSecIncrease = GROW_SEC * totalThreads;
+        batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
+        batch.growThreads = totalThreads - batch.growWeakenThreads;
+      }
+
+      server.hackDifficulty += batch.growThreads * GROW_SEC;
+      server.hackDifficulty = Math.max(server.minDifficulty, server.hackDifficulty - (batch.growWeakenThreads * WEAK_SEC));
+
+      server.moneyAvailable = Math.min(server.moneyMax, ns.formulas.hacking.growPercent(server, batch.growThreads, ns.getPlayer()) * server.moneyAvailable);
+
+      result.cycles++;
+      result.time += baseMSOffset + (MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
+
+      if (result.time > 1000 * 60 * 60 * 24) {
+        result.cycles = -1;
+        result.time = 1000 * 60 * 60 * 24;
+        return result;
+      }
+    }
+
+    return result;
+  } catch(e) {
+    return result;
+  }
+}
+
 function cycle(ns: NS, server: Server): ICycleStats {
   try {
     const slaves = getSlaves(ns);
@@ -102,7 +161,7 @@ function cycle(ns: NS, server: Server): ICycleStats {
       server.moneyAvailable = server.moneyMax;
 
       const batch = new HackBatch();
-      batch.hackThreads = Math.ceil(.8 / ns.formulas.hacking.hackPercent(server, ns.getPlayer()));
+      batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(server, ns.getPlayer()));
 
       while (true) {
         if (batch.hackThreads <= 0) {
@@ -114,7 +173,7 @@ function cycle(ns: NS, server: Server): ICycleStats {
         const current = server.moneyAvailable;
         const future = current - (current * hackPercent);
         server.moneyAvailable = future;
-        batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax) * 1.5);
+        batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax) * 1.2);
         server.moneyAvailable = server.moneyMax;
         batch.gain = current - future;
       
@@ -152,7 +211,7 @@ function cycle(ns: NS, server: Server): ICycleStats {
       start: baseMSOffset,
       time: cycleTime,
       gain: cycleGain,
-      rate: cycleGain / (cycleTime / 100)
+      rate: cycleGain / (cycleTime / 1000)
     }
   } catch(e) {
     return {
@@ -166,7 +225,7 @@ function cycle(ns: NS, server: Server): ICycleStats {
 }
 
 export async function main(ns: NS): Promise<void> {
-  let servers = getAllServers(ns).map(s => ns.getServer(s)).filter(s => ns.getServerMaxMoney(s.hostname) > 0 && ns.getServerMoneyAvailable(s.hostname) > 0 && s.hostname !== 'home' && !s.purchasedByPlayer);
+  let servers = getAllServers(ns).map(s => ns.getServer(s)).filter(s => ns.getServerMaxMoney(s.hostname) > 0 && ns.getServerMoneyAvailable(s.hostname) > 0 && s.hostname !== 'home' && !s.purchasedByPlayer && s.hasAdminRights);
 
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') servers = servers.filter(s => s.hostname === ns.args[0]);
 
@@ -174,37 +233,43 @@ export async function main(ns: NS): Promise<void> {
     const firstCycle = cycle(ns, s);
     const nextCycle = cycle(ns, s);
     const finalInfo: ICycleStats = Object.assign({}, firstCycle);
+    const growInfo: ICyclesToReady = cyclesToReady(ns, ns.getServer(s.hostname));
+
     const totalCycleCount = 5;
     for (let i = 1; i < totalCycleCount; i++) {
       finalInfo.gain += nextCycle.gain;
       finalInfo.time += nextCycle.time;
     }
 
-    finalInfo.rate = finalInfo.gain / (finalInfo.time / 100);
+    finalInfo.rate = finalInfo.gain / (finalInfo.time / 1000);
 
     return [
       ` ${s.hostname}`,
-      (finalInfo.rate/100000).toFixed(0).padStart(8),
+      finalInfo.rate,
       `${ns.formatNumber(finalInfo.rate, 3, 1000, true)}/s`.padStart(12),
-      formatTime(firstCycle.start).padStart(12),
-      formatTime(firstCycle.time).padStart(12),
-      formatTime(nextCycle.time).padStart(12),
-      formatTime(finalInfo.time).padStart(12),
+      formatTime(firstCycle.start).padStart(10),
+      formatTime(firstCycle.time).padStart(10),
+      formatTime(nextCycle.time).padStart(10),
+      formatTime(finalInfo.time).padStart(10),
       `${ns.getServerSecurityLevel(s.hostname).toFixed(0).padStart(2)}/${ns.getServerMinSecurityLevel(s.hostname).toFixed(0).padStart(2)}`.padStart(9),
-      ns.formatPercent(ns.getServerMoneyAvailable(s.hostname) / ns.getServerMaxMoney(s.hostname)).padStart(8)
+      ns.formatPercent(ns.getServerMoneyAvailable(s.hostname) / ns.getServerMaxMoney(s.hostname)).padStart(8),
+      growInfo.time,
+      `${formatTime(growInfo.time).padStart(10)}/${growInfo.cycles.toString().padStart(2)}`
     ]
-  }).sort((a, b) => Number(b[1]) - Number(a[1]));
+    }).sort((a, b) => Number(b[1]) - Number(a[1]));
 
 	const columns = [
 		{ header: ' Servers', width: 20 },
-		{ header: '    Rate', width: 9 },
+		{ header: '    Rate', width: 9, hide: true },
 		{ header: '        Rate', width: 13 },
-    { header: '  Initial Tm', width: 13 },
-    { header: ' First Cycle', width: 13 },
-    { header: '  Next Cycle', width: 13 },
-    { header: '  Total Time', width: 13 },
+    { header: '  Start Tm', width: 11 },
+    { header: ' First Cyc', width: 11 },
+    { header: '  Next Cyc', width: 11 },
+    { header: '  Tot Time', width: 11 },
     { header: ' Security', width: 10 },
-    { header: '  Money', width: 9 },
+    { header: '   Money', width: 9 },
+    { header: '   Grow Time', width: 13, hide: true },
+    { header: ' Grow Time', width: 14 },
     // { header: 'LOG Money', width: 10 },
     // { header: '    Value', width: 10 },
 	];
