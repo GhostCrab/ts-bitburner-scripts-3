@@ -167,7 +167,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.7 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
     let missedOnce = false;
     while (true) {
@@ -227,7 +227,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
   const cycleThreads = batches.reduce((count, batch) => count + batch.totalThreads(), 0);
   const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
   const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
-  ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+  ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[1].hackThreads}:HW${batches[1].hackWeakenThreads}:G${batches[1].growThreads}:GW${batches[1].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
   // ns.tprintf(`${target}: First Batch | ht:${batches[0].hackThreads} | hwt:${batches[0].hackWeakenThreads} | gt:${batches[0].growThreads} | gwt:${batches[0].growWeakenThreads}`)
   // ns.tprintf(`${target}: Second Batch | ht:${batches[1].hackThreads} | hwt:${batches[1].hackWeakenThreads} | gt:${batches[1].growThreads} | gwt:${batches[1].growWeakenThreads}`)
   // ns.tprintf(`${target}: Last Batch | ht:${batches[batches.length-1].hackThreads} | hwt:${batches[batches.length-1].hackWeakenThreads} | gt:${batches[batches.length-1].growThreads} | gwt:${batches[batches.length-1].growWeakenThreads}`)
