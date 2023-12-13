@@ -277,3 +277,23 @@ export const ALL_FACTIONS = [
   "Church of the Machine God",
   "Shadows of Anarchy",
 ];
+
+export function isRootable(ns: NS, s: string, pCount: number): boolean {
+  if (ns.hasRootAccess(s)) return false;
+
+  if (ns.getServerNumPortsRequired(s) <= pCount) return true;
+
+  return false;
+}
+
+export function isHackable(ns: NS, s: string, pCount: number): boolean {
+  if (ns.hasRootAccess(s)) return false;
+
+  const hackReq = ns.getServerRequiredHackingLevel(s);
+  const hackLv = ns.getHackingLevel();
+  const portsRequired = ns.getServerNumPortsRequired(s);
+
+  if (hackLv >= hackReq && portsRequired <= pCount) return true;
+
+  return false;
+}

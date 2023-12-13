@@ -1,16 +1,5 @@
-import { NS } from "@ns";
-
-function isHackable(ns: NS, s: string, pCount: number): boolean {
-  if (ns.hasRootAccess(s)) return false;
-
-  const hackReq = ns.getServerRequiredHackingLevel(s);
-  const hackLv = ns.getHackingLevel();
-  const portsRequired = ns.getServerNumPortsRequired(s);
-
-  if (hackLv >= hackReq && portsRequired <= pCount) return true;
-
-  return false;
-}
+import { NS, CityName } from "@ns";
+import { isRootable } from "./util";
 
 function crackAndNuke(ns: NS, s: string): void {
   if (ns.fileExists("BruteSSH.exe", "home")) ns.brutessh(s);
@@ -48,9 +37,9 @@ export async function main(ns: NS): Promise<void> {
     try {
       if (ns.getServer(target).backdoorInstalled) continue;
 
-      ns.tprintf(`Installing backdoor on ${target}`);
+      if (ns.getHackingLevel() < ns.getServerRequiredHackingLevel(target)) continue;
 
-      if (!ns.hasRootAccess(target) && isHackable(ns, target, portCrackCount)) {
+      if (!ns.hasRootAccess(target) && isRootable(ns, target, portCrackCount)) {
         crackAndNuke(ns, target);
       }
 
@@ -58,11 +47,24 @@ export async function main(ns: NS): Promise<void> {
         for (const s of getConnectedPaths(ns)[target]) {
           ns.singularity.connect(s);
         }
+        ns.tprintf(`Installing backdoor on ${target}`);
         await ns.singularity.installBackdoor();
       }
     } catch(e) {
       // do nothing
     }
+  }
+
+  if (ns.getServerMoneyAvailable('home') > 10500000) {
+    const curCity = ns.getPlayer().city;
+    const cities = ['Sector-12', 'Volhaven', 'Aevum', 'Ishima', 'Chongqing', 'New Tokyo'];
+    for (const city of cities) {
+      //ns.tprintf(`${city}`);
+      ns.singularity.travelToCity(<CityName>city);
+      ns.singularity.checkFactionInvitations();
+    }
+
+    ns.singularity.travelToCity(curCity);    
   }
 
   ns.singularity.connect('home');

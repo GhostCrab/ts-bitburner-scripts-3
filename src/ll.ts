@@ -31,7 +31,7 @@ export async function main(ns: NS): Promise<void> {
   });
 
   const columns = [
-    { header: ' Script', width: 20 },
+    { header: ' Script', width: 28 },
     { header: '      RAM', width: 10 },
   ];
 

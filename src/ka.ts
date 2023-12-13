@@ -9,7 +9,7 @@ export async function main(ns: NS): Promise<void> {
 
     for (const script of scripts) {
       // ns.tprintf(`killing ${s}:${script.filename}`)
-      if (script.filename !== 'ka.js')
+      if (script.filename !== 'ka.js' && script.filename !== 'hud.js')
         ns.kill(script.pid);
     }
   }

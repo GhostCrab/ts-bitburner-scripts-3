@@ -1,17 +1,5 @@
 import { NS } from "@ns";
-import { getAllServers } from "./util";
-
-function isHackable(ns: NS, s: string, pCount: number): boolean {
-  if (ns.hasRootAccess(s)) return false;
-
-  const hackReq = ns.getServerRequiredHackingLevel(s);
-  const hackLv = ns.getHackingLevel();
-  const portsRequired = ns.getServerNumPortsRequired(s);
-
-  if (hackLv >= hackReq && portsRequired <= pCount) return true;
-
-  return false;
-}
+import { getAllServers, isRootable } from "./util";
 
 function crackAndNuke(ns: NS, s: string): void {
   if (ns.fileExists("BruteSSH.exe", "home")) ns.brutessh(s);
@@ -36,7 +24,7 @@ export async function main(ns: NS): Promise<void> {
   }, 0);
 
   for (const s of servers) {
-    if (isHackable(ns, s, portCrackCount)) {
+    if (isRootable(ns, s, portCrackCount)) {
       ns.tprintf(`Cracking ${s}`);
       crackAndNuke(ns, s);
     }

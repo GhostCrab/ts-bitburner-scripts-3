@@ -1,6 +1,6 @@
 import { NS } from "@ns";
 import { PrintTable, ColorPrint, DefaultStyle } from "tables";
-import { getAllServers } from "util";
+import { getAllServers, isRootable } from "util";
 
 function showConnected(ns: NS, parent: string, host: string, pre: string): void {
   const connectedServers = ns.scan(host);
@@ -25,15 +25,6 @@ function serverHackedStatusColor(ns: NS, s: string): string {
   return 'IndianRed';
 }
 
-function isHackable(ns: NS, s: string): boolean {
-  const hackReq = ns.getServerRequiredHackingLevel(s);
-  const hackLv = ns.getHackingLevel();
-
-  if (hackLv >= hackReq || ns.hasRootAccess(s)) return true;
-
-  return false;
-}
-
 export async function main(ns: NS): Promise<void> {
   //ns.ui.clearTerminal();
   showConnected(ns, '', 'home', '');
@@ -42,10 +33,16 @@ export async function main(ns: NS): Promise<void> {
   //   ns.tprintf(`${server}`);
   // }
 
+  const portCracks = ["BruteSSH.exe", "FTPCrack.exe", "relaySMTP.exe", "HTTPWorm.exe", "SQLInject.exe"];
+  const portCrackCount = portCracks.reduce((count, crack) => {
+    if (ns.fileExists(crack, "home")) count++;
+    return count;
+  }, 0);
+
   // ns.tprintf(`${ns.ui.windowSize()}`)
   const sortedServers = getAllServers(ns).sort((a, b) => ns.getServerRequiredHackingLevel(a) - ns.getServerRequiredHackingLevel(b));
   const filteredServers = sortedServers//.filter(s => ns.getServerMaxMoney(s) > 0);
-  const hackableServerCount = filteredServers.filter(s => isHackable(ns, s)).length;
+  const hackableServerCount = filteredServers.filter(s => isRootable(ns, s, portCrackCount)).length;
   const truncatedServers = filteredServers.slice(0, hackableServerCount + 5);
   
   const data = sortedServers.map(s => {

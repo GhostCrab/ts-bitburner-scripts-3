@@ -1,5 +1,14 @@
 import { NS } from "@ns";
 import { ColorPrint } from "./tables";
+import { formatTime } from "./util";
+
+export interface HackStats {
+  target: string;
+  begin: number;
+  start: number;
+  end: number;
+  gainRate: number;
+}
 
 const doc: Document = eval('document');
 const hook0 = doc.getElementById('overview-extra-hook-0');
@@ -7,8 +16,19 @@ const hook1 = doc.getElementById('overview-extra-hook-1');
 const hook2 = doc.getElementById('overview-extra-hook-2');
 const hookRootEl = hook0?.parentElement?.parentElement;
 const overviewEl = hookRootEl?.parentElement;
+const hpRootEl = <HTMLElement>overviewEl?.children[0];
 const hackRootEl = <HTMLElement>overviewEl?.children[2];
 const hackProgressEl = <HTMLElement>overviewEl?.children[3];
+const nextSibling = hookRootEl?.nextSibling;
+
+function addEl(el: HTMLElement) {
+  if (nextSibling) {
+    hookRootEl?.parentNode?.insertBefore(el, nextSibling);
+  }
+  else {
+    hookRootEl?.parentNode?.appendChild(el);
+  }
+}
 
 class ProgressElement {
   private rootEl: HTMLElement;
@@ -29,32 +49,26 @@ class ProgressElement {
     this.subEl1.classList.add('HUD_el');
     this.subEl2.classList.add('HUD_el');
 
-    console.log(this.rootEl.outerHTML);
-    console.log(this.subEl1.outerHTML);
-    console.log(this.subEl2.outerHTML);
+    this.subEl1.style.margin = '4px 0 0 0';
   
-    hook2?.insertAdjacentHTML('beforebegin', this.rootEl.outerHTML);
+    addEl(this.rootEl);
   }
 
-  update(ns: NS, current: number, max = 100, min = 0) {
-    const nvalue = (current / max) * 100;
-    let transform = 100 - nvalue;
-    let wholeValue = Math.floor(nvalue);
-
-    if (wholeValue > 100) {
-      transform = 0;
-      wholeValue = 100;
-    }
-
-    ns.tprintf(`ProgressElement Update: ${current.toFixed(2)}/${max}`)
+  update(current: number, max = 100, min = 0) {
+    const wholeValue = Math.floor(Math.min(Math.max(((current - min) / (max - min)) * 100, 0), 100));
+    const transform = 100 - wholeValue;
 
     this.subEl1.setAttribute("aria-valuenow", `${wholeValue}`);
-    this.subEl2.setAttribute("style", `transform: translateX(${-transform.toFixed(3)}%);`);
+    this.subEl2.style.transform = `translateX(${-transform.toFixed(3)}%)`;
+  }
+
+  color(str1: string) {
+    this.subEl2.style.backgroundColor = str1;
   }
 
   reset() {
     this.subEl1.setAttribute("aria-valuenow", "100");
-    this.subEl2.setAttribute("style", "transform: translateX(-0%);");
+    this.subEl2.style.transform = "transform: translateX(-0.000%)";
   }
 }
 
@@ -63,25 +77,42 @@ class SingleElement {
   private subEl1: HTMLElement;
 
   constructor() {
-    this.rootEl = <HTMLElement>hackRootEl?.cloneNode(true);
-    this.subEl1 = <HTMLElement>this.rootEl?.children[0]?.firstChild;
+    this.rootEl = <HTMLElement>hpRootEl.cloneNode(true);
+    this.subEl1 = <HTMLElement>this.rootEl.children[0].children[0];
+    const child2 = <HTMLElement>this.rootEl.children[1].children[0];
+    const child3 = <HTMLElement>this.rootEl.children[2].children[0];
 
-    if (!this.rootEl || !this.subEl1) throw "SingleElement init failed";
-
-    if (this.rootEl?.childNodes[1]) this.rootEl.removeChild(this.rootEl.childNodes[1]);
+    if (!this.rootEl || !this.subEl1 || !child2 || !child3) throw "SingleElement init failed";
 
     this.subEl1.removeAttribute("id");
     this.subEl1.innerText = "";
-    
+
+    this.subEl1.parentElement?.setAttribute('colspan', '2');
+  
+    child2.removeAttribute("id");
+    child2.innerText = "";
+
+    child3.removeAttribute("id");
+    child3.innerText = "";
+
     this.rootEl.classList.add('HUD_el');
     this.subEl1.classList.add('HUD_el');
-    
+    child2.classList.add('HUD_rm');
+    child3.classList.add('HUD_rm');
+
+    this.color('white');
   
-    hook2?.insertAdjacentHTML('beforebegin', this.rootEl.outerHTML);
+    addEl(this.rootEl);
+
+    doc.querySelectorAll('.HUD_rm').forEach(el => el.remove());
   }
 
   update(str1: string) {
     this.subEl1.innerText = str1;
+  }
+
+  color(str1: string) {
+    this.subEl1.style.color = str1;
   }
 
   reset() {
@@ -95,12 +126,12 @@ class DoubleElement {
   private subEl2: HTMLElement;
 
   constructor() {
-    this.rootEl = <HTMLElement>hackRootEl.cloneNode(true);
+    this.rootEl = <HTMLElement>hpRootEl.cloneNode(true);
     this.subEl1 = <HTMLElement>this.rootEl.children[0].children[0];
     this.subEl2 = <HTMLElement>this.rootEl.children[1].children[0];
-    const child3 = <HTMLElement>this.rootEl.children[1].children[0];
+    const child3 = <HTMLElement>this.rootEl.children[2].children[0];
 
-    if (!this.rootEl || !this.subEl1 || !this.subEl2) throw "DoubleElement init failed";
+    if (!this.rootEl || !this.subEl1 || !this.subEl2 || !child3) throw "DoubleElement init failed";
 
     this.subEl1.removeAttribute("id");
     this.subEl1.innerText = "";
@@ -114,11 +145,16 @@ class DoubleElement {
     this.rootEl.classList.add('HUD_el');
     this.subEl1.classList.add('HUD_el');
     this.subEl2.classList.add('HUD_el');
-    child3.classList.add('HUD_el');
+    child3.classList.add('HUD_rm');
 
-    console.log(this.rootEl.outerHTML);
+    this.subEl1.style.margin = '2px 4px 0 0';
+    this.subEl2.style.margin = '2px 0 0 4px';
+
+    this.color('white', 'white');
   
-    hook2?.insertAdjacentHTML('beforebegin', this.rootEl.outerHTML);
+    addEl(this.rootEl);
+
+    doc.querySelectorAll('.HUD_rm').forEach(el => el.remove());
   }
 
   update(str1?: string, str2?: string) {
@@ -131,9 +167,19 @@ class DoubleElement {
     }
   }
 
+  color(str1?: string, str2?: string) {
+    if (str1 !== undefined) {
+      this.subEl1.style.color = str1;
+    }
+
+    if (str2 !== undefined) {
+      this.subEl2.style.color = str2;
+    }
+  }
+
   reset() {
-    this.subEl1.innerText = "";
-    this.subEl2.innerText = ""; 
+    this.subEl1.innerText = "----";
+    this.subEl2.innerText = "----"; 
   }
 }
 
@@ -141,23 +187,30 @@ class DividerElement {
   private rootEl: HTMLElement;
 
   constructor () {
-    this.rootEl = <HTMLElement>hookRootEl?.cloneNode(true);
+    this.rootEl = <HTMLElement>hackRootEl.cloneNode(true);
     const child1 = <HTMLElement>this.rootEl.children[0].children[0];
-    const child2 = <HTMLElement>this.rootEl.children[0].children[0];
+    const child2 = <HTMLElement>this.rootEl.children[1].children[0];
+    const child3 = <HTMLElement>this.rootEl.children[2].children[0];
 
-    if (!this.rootEl || !child1 || !child2) throw "DividerElement init failed";
+    if (!this.rootEl || !child1 || !child2 || !child3) throw "DividerElement init failed";
 
-    
+    child1.removeAttribute("id");
     child1.innerText = "";
-    
-    child2.innerText = "";
+  
     child2.removeAttribute("id");
+    child2.innerText = "";
+
+    child3.removeAttribute("id");
+    child3.innerText = "";
 
     this.rootEl.classList.add('HUD_el');
-    child1.classList.add('HUD_el');
-    child2.classList.add('HUD_el');
-  
-    hook2?.insertAdjacentHTML('beforebegin', this.rootEl.outerHTML);
+    child1.classList.add('HUD_rm');
+    child2.classList.add('HUD_rm');
+    child3.classList.add('HUD_rm');
+
+    addEl(this.rootEl);
+
+    doc.querySelectorAll('.HUD_rm').forEach(el => el.remove());
   }
 }
 
@@ -173,6 +226,9 @@ function hudErr(ns: NS, test: boolean, error: string): boolean {
 export async function main(ns: NS) {
   ns.disableLog("ALL");
 
+  const theme = ns.ui.getTheme();
+
+  const removeByClassName = (sel: string) => doc.querySelectorAll(sel).forEach(el => el.remove());
   ns.atExit(function () { removeByClassName('.HUD_el'); })
 
   const args = ns.flags([["help", false]]);
@@ -192,22 +248,98 @@ export async function main(ns: NS) {
   if (hudErr(ns, hackRootEl === null, 'Unable to find hackRootEl')) return;
   if (hudErr(ns, hackProgressEl === null, 'Unable to find hackProgressEl')) return;
 
-  const removeByClassName = (sel: string) => doc.querySelectorAll(sel).forEach(el => el.remove());
-  const colorByClassName = (sel: string, col: string) => doc.querySelectorAll(sel).forEach(el => {
-    (el as HTMLElement).style.color = col; 
-    (el as HTMLElement).style.fontSize = '0.75rem'
-  });
-
-  
   const clockKarmaEl = new DoubleElement();
-  // const progressTest = new ProgressElement();
-  // const divider1 = new DividerElement();
+  //new DividerElement();
+  const hackStatsTargetGainEl = new DoubleElement();
+  const hackStatsTimeEl = new DoubleElement();
+  const hackStatsProgressEl = new ProgressElement();
+  //new DividerElement();
+  const repStatsEl = new DoubleElement();
+  const repProgressEl = new ProgressElement();
+  new DividerElement();
 
+  let hackStats: HackStats = {
+    target: "",
+    begin: 0,
+    start: 0,
+    end: 0,
+    gainRate: 0
+  };
+
+  const hackStatPort = ns.getPortHandle(1);
+  
   while (true) {
     const date = new Date();
 
     clockKarmaEl.update(date.toLocaleTimeString("it-IT"), `k: ${ns.heart.break().toFixed(0)}`);
-    // progressTest.update(ns, (date.getTime()/100) % 100);
+
+    if (hackStatPort.peek() !== "NULL PORT DATA")
+      hackStats = JSON.parse(hackStatPort.peek().toString());
+    
+    if (hackStats.target !== "" && (date.getTime() - 5000) > hackStats.end)
+      hackStats.target = "";
+
+    if (hackStats.target !== "") {
+      hackStatsTargetGainEl.color(theme['hack'], theme['hack']);
+      hackStatsTimeEl.color(theme['hack'], theme['hack']);
+      hackStatsProgressEl.color(theme['hack']);
+
+      hackStatsTargetGainEl.update(hackStats.target, `$${ns.formatNumber(hackStats.gainRate / ((hackStats.end - hackStats.start) / 1000), 0, 1000)}/s`);
+      
+      if (date.getTime() > hackStats.begin) {
+        hackStatsProgressEl.color(theme['cha']);
+        hackStatsTimeEl.color(theme['cha'], theme['cha']);
+
+        const executeTime = hackStats.end - hackStats.begin;
+        hackStatsTimeEl.update(formatTime(executeTime), formatTime(executeTime - (date.getTime() - hackStats.begin)));
+        hackStatsProgressEl.update(date.getTime(), hackStats.end, hackStats.begin);
+        
+      } else {
+        const executeTime = hackStats.begin - hackStats.start;
+        hackStatsTimeEl.update(formatTime(executeTime), formatTime(executeTime - (date.getTime() - hackStats.start)));
+        hackStatsProgressEl.update(date.getTime(), hackStats.begin, hackStats.start);
+      }
+    } else {
+      hackStatsTargetGainEl.color(theme['hack'], theme['hack']);
+      hackStatsTimeEl.color(theme['hack'], theme['hack']);
+      hackStatsProgressEl.color(theme['hack']);
+
+      hackStatsTargetGainEl.update("NO TARGET", "$0/s");
+      hackStatsProgressEl.update(0);
+    }
+
+
+    const work = ns.singularity.getCurrentWork();
+    console.log(work);
+    if (work?.type === "FACTION") {
+      repStatsEl.color(theme['rep'], theme['rep']);
+      repProgressEl.color(theme['rep']);
+      
+      const workStats = ns.formulas.work.factionGains(ns.getPlayer(), work.factionWorkType, ns.singularity.getFactionFavor(work.factionName));
+      let targetRep = ns.formulas.reputation.calculateFavorToRep(150);
+      if (work.factionName === "Tian Di Hui") targetRep = 6250;
+      if (work.factionName === "CyberSec") targetRep = 10000;
+      if (work.factionName === "NiteSec") targetRep = 45000;
+      if (work.factionName === "The Black Hand") targetRep = 100000;
+      const totalRep = ns.singularity.getFactionRep(work.factionName) + ns.formulas.reputation.calculateFavorToRep(ns.singularity.getFactionFavor(work.factionName));
+      const repNeeded = Math.max(targetRep - totalRep, 0);
+      const isFocused = ns.singularity.isFocused();// || ns.singularity.getOwnedAugmentations().includes('Neuroreceptor Management Implant');
+      const repGain = workStats.reputation * 5 * (isFocused ? 1 : 0.8);
+      repStatsEl.update(`${ns.formatNumber(totalRep, 0, 1000).padStart(4)}/${ns.formatNumber(targetRep, 0, 1000, true)}`, formatTime((repNeeded/repGain) * 1000));
+      repProgressEl.update(totalRep, repNeeded);
+    } else if (work?.type === "CREATE_PROGRAM") {
+      repStatsEl.color(theme['int'], theme['int']);
+      repProgressEl.color(theme['int']);
+      repStatsEl.update(work.programName, work.cyclesWorked);
+      repProgressEl.update(0);
+    } else {
+      repStatsEl.color(theme['int'], theme['int']);
+      repProgressEl.color(theme['int']);
+      repStatsEl.reset();
+      repProgressEl.update(100);
+    }
+    
+
     await ns.sleep(500);
   }  
  

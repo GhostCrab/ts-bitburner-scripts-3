@@ -371,7 +371,7 @@ export async function main(ns: NS): Promise<void> {
     }
   }
 
-  //augs = augs.filter(a => a.canBuy());
+  augs = augs.filter(a => a.canBuy());
   //augs.forEach(a => a.printMultipliers(ns));
 
   //PrintTable(ns, augs.map(a => a.shortTableData(ns)), Aug.shortTableCols(), DefaultStyle(), ColorPrint);

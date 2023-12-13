@@ -1,5 +1,6 @@
 import { NS } from "@ns";
 import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScripts } from "util";
+import { HackStats } from "./hud";
 import { ColorPrint } from "./tables";
 
 // TODO:
@@ -249,6 +250,17 @@ async function cycle(ns: NS, target: string): Promise<void> {
         script = scripts.shift();
     }
   }
+
+  const time = (new Date()).getTime();
+  const hackStats: HackStats = {
+    target: target,
+    start: time,
+    begin: time + baseMSOffset,
+    end: time + cycleTime,
+    gainRate: cycleGain,
+  };
+  ns.clearPort(1);
+  ns.writePort(1, JSON.stringify(hackStats));
 
   await waitForHGWScripts(ns, slaves);  
 }

@@ -155,7 +155,8 @@ function cycle(ns: NS, server: Server): ICycleStats {
     }
 
     let missedOnce = false;
-    while (totalThreads > 0 ) {
+    let additionalBatches = 0;
+    if (totalThreads > 0 ) {
       // from now on assume we are at minimum security, maximum money available
       server.hackDifficulty = server.minDifficulty;
       server.moneyAvailable = server.moneyMax;
@@ -194,16 +195,10 @@ function cycle(ns: NS, server: Server): ICycleStats {
 
       // duplicate batch until there is no space left
       const batchThreads = batch.totalThreads();
-      const additionalBatches = Math.floor(totalThreads / batchThreads);
-      for (let i = 0; i < additionalBatches; ++i) {
-        const newBatch = new HackBatch;
-        Object.assign(newBatch, batch);
-        batches.push(newBatch);
-        totalThreads -= newBatch.totalThreads();
-      }
+      additionalBatches = Math.floor(totalThreads / batchThreads);
     }
 
-    const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
+    const cycleTime = baseMSOffset + ((batches.length + additionalBatches) * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
     const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
 
     return {
