@@ -167,7 +167,8 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    batch.hackThreads = Math.ceil(.89 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    if (batch.hackThreads * 5000 < totalThreads) batch.hackThreads = Math.ceil(.40 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
     let missedOnce = false;
     while (true) {
