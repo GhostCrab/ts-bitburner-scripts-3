@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
+import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, HACK_PERCENT, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
@@ -147,7 +147,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.3 / ns.hackAnalyze(target));
+    batch.hackThreads = Math.ceil(HACK_PERCENT / ns.hackAnalyze(target));
 
     while (true) {
       if (batch.hackThreads <= 0) {

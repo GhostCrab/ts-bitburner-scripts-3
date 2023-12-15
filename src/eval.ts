@@ -1,5 +1,5 @@
 import { NS, Server } from "@ns";
-import { formatTime, getAllServers, getSlaves, getTotalThreads, MS_BETWEEN_OPERATIONS } from "./util";
+import { formatTime, getAllServers, getSlaves, getTotalThreads, HACK_PERCENT, MS_BETWEEN_OPERATIONS } from "./util";
 import { PrintTable, ColorPrint, DefaultStyle } from "tables";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
@@ -163,7 +163,7 @@ function cycle(ns: NS, server: Server): ICycleStats {
     const hackPercentPerThread = Math.min(ns.formulas.hacking.hackPercent(server, ns.getPlayer()), 1);
 
     if (hackPercentPerThread <= 0) batch.hackThreads = 0;
-    else batch.hackThreads = Math.ceil(.25 / hackPercentPerThread);
+    else batch.hackThreads = Math.ceil(HACK_PERCENT / hackPercentPerThread);
 
     while (true) {
       if (batch.hackThreads <= 0) {
