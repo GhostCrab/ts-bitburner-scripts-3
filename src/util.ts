@@ -5,6 +5,8 @@ export const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 export const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
 export const HOME_RESERVE = 512;
 
+export const MS_BETWEEN_OPERATIONS = 10;
+
 export function getAllServers(ns: NS): string[] {
   const servers: Set<string> = new Set<string>();
   const queue: string[] = ['home'];

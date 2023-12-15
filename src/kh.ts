@@ -31,11 +31,11 @@ export async function main(ns: NS): Promise<void> {
   
   hackPIDs.map(pid => ns.kill(pid));
   ns.tprintf(`Killed ${hackPIDs.length} Hack Scripts`);
-  await ns.sleep(1000);
+  await ns.sleep(100);
 
   growPIDs.map(pid => ns.kill(pid));
   ns.tprintf(`Killed ${growPIDs.length} Grow Scripts`);
-  await ns.sleep(1000);
+  await ns.sleep(100);
 
   weakenPIDs.map(pid => ns.kill(pid));
   ns.tprintf(`Killed ${weakenPIDs.length} Weaken Scripts`);

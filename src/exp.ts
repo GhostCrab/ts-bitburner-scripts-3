@@ -1,10 +1,12 @@
 import { NS } from "@ns";
-import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScripts } from "util";
+import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
 import { ColorPrint } from "./tables";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 10;
+
+
+let goingFast = false;
 
 interface IHackBatch {
   growThreads: number;
@@ -143,7 +145,10 @@ async function cycle(ns: NS, target: string): Promise<void> {
   const cycleThreads = batches.reduce((count, batch) => count + batch.totalThreads(), 0);
   const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
   const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
-  ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+  if (!goingFast) {
+    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+    if (baseMSOffset < 3000) goingFast = true;
+  }
 
   const scripts = getScriptCalls(batches);
   let script = scripts.shift();

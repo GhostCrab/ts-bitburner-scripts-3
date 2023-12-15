@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScripts } from "util";
+import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
 import { HackStats } from "./hud";
 import { ColorPrint } from "./tables";
 
@@ -13,7 +13,6 @@ import { ColorPrint } from "./tables";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 10;
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export function autocomplete(data: any, args: any): string[] {
@@ -125,7 +124,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
   {
     const batch = new HackBatch();
     const baseWeaken = ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
-    const growMult = ns.getServerMaxMoney(target) / (ns.getServerMoneyAvailable(target) + 1);
+    const growMult = Math.max(ns.getServerMaxMoney(target) / (ns.getServerMoneyAvailable(target) + 1), 1);
     batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult));
     let growSecIncrease = GROW_SEC * batch.growThreads;
     batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
@@ -167,8 +166,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
     batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
     // start with hack 50%
-    batch.hackThreads = Math.ceil(.89 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
-    if (batch.hackThreads * 5000 < totalThreads) batch.hackThreads = Math.ceil(.40 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+    batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
 
     let missedOnce = false;
     while (true) {
@@ -218,7 +216,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
       batches.push(newBatch);
       totalThreads -= newBatch.totalThreads();
 
-      if(batches.length >= 5000) {
+      if(batches.length >= 2000) {
         totalThreads = 0;
         break;
       }

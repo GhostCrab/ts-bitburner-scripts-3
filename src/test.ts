@@ -32,8 +32,8 @@ export async function main(ns: NS): Promise<void> {
     return count;
   }, 0);
 
-  //for (const target of ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'The-Cave', 'w0r1d_d43m0n', 'ecorp', 'fulcrumassets', 'fulcrumtech']) {
-  for (const target of ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'The-Cave', 'w0r1d_d43m0n']) {
+  for (const target of ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'The-Cave', 'w0r1d_d43m0n', 'ecorp', 'fulcrumassets', 'fulcrumtech']) {
+  //for (const target of ['CSEC', 'avmnite-02h', 'I.I.I.I', 'run4theh111z', 'The-Cave', 'w0r1d_d43m0n']) {
     try {
       if (ns.getServer(target).backdoorInstalled) continue;
 

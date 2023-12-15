@@ -1,9 +1,8 @@
 import { NS } from "@ns";
-import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, waitForHGWScripts } from "util";
+import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 10;
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export function autocomplete(data: any, args: any): string[] {

@@ -1,10 +1,9 @@
 import { NS, Server } from "@ns";
-import { formatTime, getAllServers, getSlaves, getTotalThreads } from "./util";
+import { formatTime, getAllServers, getSlaves, getTotalThreads, MS_BETWEEN_OPERATIONS } from "./util";
 import { PrintTable, ColorPrint, DefaultStyle } from "tables";
 
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
-const MS_BETWEEN_OPERATIONS = 100;
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
 export function autocomplete(data: any, args: any): string[] {
@@ -121,137 +120,177 @@ function cyclesToReady(ns: NS, server: Server): ICyclesToReady {
 }
 
 function cycle(ns: NS, server: Server): ICycleStats {
-  try {
-    const slaves = getSlaves(ns);
-    let totalThreads = getTotalThreads(ns, slaves);
+  const slaves = getSlaves(ns);
+  let totalThreads = getTotalThreads(ns, slaves);
 
-    server.baseDifficulty = server.baseDifficulty || ns.getServerBaseSecurityLevel(server.hostname);
-    server.minDifficulty = server.minDifficulty || ns.getServerMinSecurityLevel(server.hostname);
-    server.hackDifficulty = server.hackDifficulty || ns.getServerSecurityLevel(server.hostname);
+  server.baseDifficulty = server.baseDifficulty || ns.getServerBaseSecurityLevel(server.hostname);
+  server.minDifficulty = server.minDifficulty || ns.getServerMinSecurityLevel(server.hostname);
+  server.hackDifficulty = server.hackDifficulty || ns.getServerSecurityLevel(server.hostname);
 
-    server.moneyAvailable = server.moneyAvailable || ns.getServerMoneyAvailable(server.hostname);
-    server.moneyMax = server.moneyMax || ns.getServerMaxMoney(server.hostname);
+  server.moneyAvailable = server.moneyAvailable || ns.getServerMoneyAvailable(server.hostname);
+  server.moneyMax = server.moneyMax || ns.getServerMaxMoney(server.hostname);
 
-    const batches: IHackBatch[] = [];
-    const baseMSOffset = Math.ceil(ns.formulas.hacking.weakenTime(server, ns.getPlayer()));
+  const batches: IHackBatch[] = [];
+  const baseMSOffset = Math.ceil(ns.formulas.hacking.weakenTime(server, ns.getPlayer()));
 
-    // first batch is always GW if the server is not already at min security / max money
-    // find out how many threads are required to grow to max
-    if (server.hackDifficulty > server.baseDifficulty || server.moneyAvailable < server.moneyMax) {
-      const batch = new HackBatch();
-      const baseWeaken = server.hackDifficulty - server.minDifficulty;
-      batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax));
-      let growSecIncrease = GROW_SEC * batch.growThreads;
+  // first batch is always GW if the server is not already at min security / max money
+  // find out how many threads are required to grow to max
+  if (server.hackDifficulty > server.baseDifficulty || server.moneyAvailable < server.moneyMax) {
+    const batch = new HackBatch();
+    const baseWeaken = server.hackDifficulty - server.minDifficulty;
+    batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax));
+    server.moneyAvailable = Math.min(server.moneyMax, server.moneyAvailable + batch.growThreads);
+    server.moneyAvailable = Math.min(server.moneyMax, server.moneyAvailable * ns.formulas.hacking.growPercent(server, batch.growThreads, ns.getPlayer()));
+    let growSecIncrease = GROW_SEC * batch.growThreads;
+    server.hackDifficulty += growSecIncrease;
+    batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
+    server.hackDifficulty = Math.max(server.minDifficulty, server.hackDifficulty - (batch.growWeakenThreads * WEAK_SEC));
+
+    if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
+      growSecIncrease = GROW_SEC * totalThreads;
       batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
-
-      if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
-        growSecIncrease = GROW_SEC * totalThreads;
-        batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
-        batch.growThreads = totalThreads - batch.growWeakenThreads;
-      }
-
-      batches.push(batch);
-      totalThreads -= batch.totalThreads();
+      batch.growThreads = totalThreads - batch.growWeakenThreads;
     }
 
-    let missedOnce = false;
-    let additionalBatches = 0;
-    if (totalThreads > 0 ) {
-      // from now on assume we are at minimum security, maximum money available
-      server.hackDifficulty = server.minDifficulty;
+    batches.push(batch);
+    totalThreads -= batch.totalThreads();
+  }
+
+  let missedOnce = false;
+  let additionalBatches = 0;
+  if (totalThreads > 0 ) {
+    const batch = new HackBatch();
+    const hackPercentPerThread = Math.min(ns.formulas.hacking.hackPercent(server, ns.getPlayer()), 1);
+
+    if (hackPercentPerThread <= 0) batch.hackThreads = 0;
+    else batch.hackThreads = Math.ceil(.25 / hackPercentPerThread);
+
+    while (true) {
+      if (batch.hackThreads <= 0) {
+        totalThreads = 0;
+        break;
+      }
+
+      const hackPercent = hackPercentPerThread * batch.hackThreads;
+      const current = server.moneyAvailable;
+      const future = current - (current * hackPercent);
+      server.moneyAvailable = future;
+      batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax) * 1.2);
       server.moneyAvailable = server.moneyMax;
-
-      const batch = new HackBatch();
-      batch.hackThreads = Math.ceil(.25 / ns.formulas.hacking.hackPercent(server, ns.getPlayer()));
-
-      while (true) {
-        if (batch.hackThreads <= 0) {
-          totalThreads = 0;
-          break;
-        }
-
-        const hackPercent = ns.formulas.hacking.hackPercent(server, ns.getPlayer()) * batch.hackThreads;
-        const current = server.moneyAvailable;
-        const future = current - (current * hackPercent);
-        server.moneyAvailable = future;
-        batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(server, ns.getPlayer(), server.moneyMax) * 1.2);
-        server.moneyAvailable = server.moneyMax;
-        batch.gain = current - future;
+      batch.gain = current - future;
       
-        batch.hackWeakenThreads = Math.ceil(ns.hackAnalyzeSecurity(batch.hackThreads, server.hostname) / WEAK_SEC);
-        batch.growWeakenThreads = Math.ceil(batch.growThreads / (WEAK_SEC / GROW_SEC));
+      batch.hackWeakenThreads = Math.ceil(ns.hackAnalyzeSecurity(batch.hackThreads, server.hostname) / WEAK_SEC);
+      batch.growWeakenThreads = Math.ceil(batch.growThreads / (WEAK_SEC / GROW_SEC));
 
-        if (batch.totalThreads() <= totalThreads) {
-          totalThreads -= batch.totalThreads();
-          batches.push(batch);
+      if (batch.totalThreads() <= totalThreads) {
+        totalThreads -= batch.totalThreads();
+        batches.push(batch);
 
-          if (missedOnce) totalThreads = 0;
-          break;
-        }
-
-        batch.hackThreads = Math.floor(batch.hackThreads * 0.75);
-        missedOnce = true;
+        if (missedOnce) totalThreads = 0;
+        break;
       }
 
-      // duplicate batch until there is no space left
-      const batchThreads = batch.totalThreads();
+      batch.hackThreads = Math.floor(batch.hackThreads * 0.75);
+      missedOnce = true;
+    }
+
+    // duplicate batch until there is no space left
+    const batchThreads = batch.totalThreads();
+    if (batchThreads > 0)
       additionalBatches = Math.floor(totalThreads / batchThreads);
-    }
+  }
 
-    const cycleTime = baseMSOffset + ((batches.length + additionalBatches) * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
-    const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
+  if (batches.length === 0)
+    return { target: server.hostname, start: 0, time: 0, gain: 0, rate: 0 };
 
-    return {
-      target: server.hostname,
-      start: baseMSOffset,
-      time: cycleTime,
-      gain: cycleGain,
-      rate: cycleGain / (cycleTime / 1000)
-    }
-  } catch(e) {
-    return {
-      target: server.hostname,
-      start: 1,
-      time: 1,
-      gain: 0,
-      rate: 0
-    }
+  if (batches.length + additionalBatches > 2000)
+    additionalBatches = 2000 - batches.length;
+
+  const cycleTime = baseMSOffset + ((batches.length + additionalBatches) * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
+  const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0) + (additionalBatches * batches[batches.length - 1].gain);
+
+  return {
+    target: server.hostname,
+    start: baseMSOffset,
+    time: cycleTime,
+    gain: cycleGain,
+    rate: cycleGain / (cycleTime / 1000)
   }
 }
 
+function dirtyCheck(ns: NS, targets: string[]) {
+  const slaves = getSlaves(ns);
+  const totalThreads = getTotalThreads(ns, slaves);
+  const hackThreads = totalThreads * .5;
+  const player = ns.getPlayer();
+
+  const data: (string | number)[][] = []
+  for (const s of targets.map(t => ns.getServer(t))) {
+    s.hackDifficulty = s.minDifficulty;
+    s.moneyAvailable = s.moneyMax;
+
+    const baseTime = Math.ceil(ns.formulas.hacking.weakenTime(s, player));
+    const hackPercentPerThread = Math.min(ns.formulas.hacking.hackPercent(s, player), 1);
+    const batchHackThreads = hackPercentPerThread > 0 ? Math.ceil(.25 / hackPercentPerThread) : 0;
+    const moneyPerBatch = s.moneyAvailable ? (batchHackThreads * hackPercentPerThread) * s.moneyAvailable : 0;
+    const batchCount = batchHackThreads > 0 ? Math.floor(hackThreads / batchHackThreads) : 0;
+    const moneyPerCycle = batchCount * moneyPerBatch;
+    const cycleTime = baseTime + (batchCount * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
+    const gainPerSecond = moneyPerCycle / (cycleTime / 1000);
+
+    if (gainPerSecond > 0) data.push([s.hostname, gainPerSecond]);
+
+    //ns.tprintf(`${s.hostname}: ${formatTime(cycleTime)}|${formatTime(baseTime)}|${ns.formatNumber(moneyPerCycle, 3, 1000, true)}|${ns.formatNumber(gainPerSecond, 3, 1000, true)}/s`)
+  }
+
+  return data.sort((a, b) => Number(b[1]) - Number(a[1])).map(a => a[0].toString());
+}
+
 export async function main(ns: NS): Promise<void> {
-  let servers = getAllServers(ns).map(s => ns.getServer(s)).filter(s => ns.getServerMaxMoney(s.hostname) > 0 && ns.getServerMoneyAvailable(s.hostname) > 0 && s.hostname !== 'home' && !s.purchasedByPlayer && s.hasAdminRights);
+  let servers: Server[] = []
 
-  if (ns.args.length > 0 && typeof ns.args[0] === 'string') servers = servers.filter(s => s.hostname === ns.args[0]);
+  if (ns.args.length > 0 && typeof ns.args[0] === 'string') servers = [ns.getServer(ns.args[0])];
+  else servers = dirtyCheck(ns, getAllServers(ns)).map(s => ns.getServer(s));
 
-  const data = servers.map(s => {
-    const firstCycle = cycle(ns, s);
-    const nextCycle = cycle(ns, s);
-    const finalInfo: ICycleStats = Object.assign({}, firstCycle);
+  servers = servers.slice(0, 8);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let data: any = [];
+  for (const s of servers) {
+    const finalInfo: ICycleStats = { target: s.hostname, start: 0, time: 0, gain: 0, rate: 0 };
+    let firstInfo: ICycleStats = { target: s.hostname, start: 0, time: 0, gain: 0, rate: 0 };
+    let lastInfo: ICycleStats = { target: s.hostname, start: 0, time: 0, gain: 0, rate: 0 };
     const growInfo: ICyclesToReady = cyclesToReady(ns, ns.getServer(s.hostname));
 
     const totalCycleCount = 5;
-    for (let i = 1; i < totalCycleCount; i++) {
-      finalInfo.gain += nextCycle.gain;
-      finalInfo.time += nextCycle.time;
+    for (let i = 0; i < totalCycleCount; i++) {
+      const cycleInfo = cycle(ns, s);
+      if (i === 0) firstInfo = Object.assign({}, cycleInfo);
+      if (i === totalCycleCount - 1) lastInfo = Object.assign({}, cycleInfo);
+
+      finalInfo.gain += cycleInfo.gain;
+      finalInfo.time += cycleInfo.time;
     }
 
     finalInfo.rate = finalInfo.gain / (finalInfo.time / 1000);
-
-    return [
+    
+    data.push([
       ` ${s.hostname}`,
       finalInfo.rate,
       `${ns.formatNumber(finalInfo.rate, 3, 1000, true)}/s`.padStart(12),
-      formatTime(firstCycle.start).padStart(10),
-      formatTime(firstCycle.time).padStart(10),
-      formatTime(nextCycle.time).padStart(10),
+      formatTime(firstInfo.start).padStart(10),
+      formatTime(firstInfo.time).padStart(10),
+      formatTime(lastInfo.time).padStart(10),
       formatTime(finalInfo.time).padStart(10),
       `${ns.getServerSecurityLevel(s.hostname).toFixed(0).padStart(2)}/${ns.getServerMinSecurityLevel(s.hostname).toFixed(0).padStart(2)}`.padStart(9),
       ns.formatPercent(ns.getServerMoneyAvailable(s.hostname) / ns.getServerMaxMoney(s.hostname)).padStart(8),
       growInfo.time,
       `${formatTime(growInfo.time).padStart(10)}/${growInfo.cycles.toString().padStart(2)}`
-    ]
-    }).sort((a, b) => Number(b[1]) - Number(a[1]));
+    ]);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  data = data.sort((a: any[], b: any[]) => Number(b[1]) - Number(a[1]));
 
 	const columns = [
 		{ header: ' Servers', width: 20 },
