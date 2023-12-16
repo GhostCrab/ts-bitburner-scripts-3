@@ -63,7 +63,7 @@ export async function main(ns: NS): Promise<void> {
     { header: ' Ports', width: 7 },
 		{ header: ' Base Sec', width: 10 },
 		{ header: '    Ram', width: 8 },
-		{ header: '     Money', width: 11 }
+		{ header: '     Money', width: 11 },
     { header: ' Max Money', width: 11 }
 	];
 

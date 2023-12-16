@@ -35,6 +35,7 @@ interface IHackBatch {
   hackWeakenMsBuf: number;
 
   gain: number;
+  hackPercent: number;
 
   totalThreads(): number;
 }
@@ -55,6 +56,7 @@ class HackBatch implements IHackBatch {
   hackWeakenMsBuf = 0;
 
   gain = 0;
+  hackPercent = 0;
 
   totalThreads(): number {
     return this.growThreads + this.growWeakenThreads + this.hackThreads + this.hackWeakenThreads;
@@ -117,7 +119,6 @@ async function cycle(ns: NS, target: string): Promise<void> {
   let totalThreads: number;
   let batches: IHackBatch[];
   let targetHackPercent = HACK_PERCENT;
-  let actualHackPercent = 0;
 
   while (true) {
     totalThreads = getTotalThreads(ns, slaves);
@@ -180,9 +181,9 @@ async function cycle(ns: NS, target: string): Promise<void> {
           break;
         }
 
-        actualHackPercent = ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()) * batch.hackThreads;
+        batch.hackPercent = ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()) * batch.hackThreads;
         const current: number = mockTarget.moneyAvailable;
-        const future = current - (current * actualHackPercent);
+        const future = current - (current * batch.hackPercent);
         mockTarget.moneyAvailable = future;
         batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(mockTarget, ns.getPlayer(), ns.getServerMaxMoney(target)) * GROW_THREAD_MULT);
         mockTarget.moneyAvailable = mockTarget.moneyMax;
@@ -228,7 +229,7 @@ async function cycle(ns: NS, target: string): Promise<void> {
       }
     }
 
-    if (batches.length < MAX_BATCHES_PER_CYCLE || actualHackPercent >= HACK_PERCENT_MAX || actualHackPercent === 0) break;
+    if (batches.length < MAX_BATCHES_PER_CYCLE || batches[batches.length - 1].hackPercent >= HACK_PERCENT_MAX || batches[batches.length - 1].hackPercent === 0) break;
 
     targetHackPercent += 0.1;
   }
@@ -237,9 +238,9 @@ async function cycle(ns: NS, target: string): Promise<void> {
   const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
   const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
   if (batches.length > 1)
-    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[1].hackThreads}:HW${batches[1].hackWeakenThreads}:G${batches[1].growThreads}:GW${batches[1].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(actualHackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[1].hackThreads}:HW${batches[1].hackWeakenThreads}:G${batches[1].growThreads}:GW${batches[1].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(batches[1].hackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
   else
-    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[0].hackThreads}:HW${batches[0].hackWeakenThreads}:G${batches[0].growThreads}:GW${batches[0].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(actualHackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[0].hackThreads}:HW${batches[0].hackWeakenThreads}:G${batches[0].growThreads}:GW${batches[0].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(batches[0].hackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
   // ns.tprintf(`${target}: First Batch | ht:${batches[0].hackThreads} | hwt:${batches[0].hackWeakenThreads} | gt:${batches[0].growThreads} | gwt:${batches[0].growWeakenThreads}`)
   // ns.tprintf(`${target}: Second Batch | ht:${batches[1].hackThreads} | hwt:${batches[1].hackWeakenThreads} | gt:${batches[1].growThreads} | gwt:${batches[1].growWeakenThreads}`)
   // ns.tprintf(`${target}: Last Batch | ht:${batches[batches.length-1].hackThreads} | hwt:${batches[batches.length-1].hackWeakenThreads} | gt:${batches[batches.length-1].growThreads} | gwt:${batches[batches.length-1].growWeakenThreads}`)

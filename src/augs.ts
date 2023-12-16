@@ -374,8 +374,24 @@ export async function main(ns: NS): Promise<void> {
   augs = augs.filter(a => a.canBuy());
   //augs.forEach(a => a.printMultipliers(ns));
 
+  let price = 0;
+  let mult = 0;
+  augs.forEach(a => {
+    const thisPrice = a.price * Math.pow(augPriceMultiplier, mult++);
+    price += thisPrice;
+    //ns.tprintf(`${a.name}: ${ns.formatNumber(thisPrice, 1, 1000)} / ${ns.formatNumber(price, 1, 1000)}`);
+  });
+
   //PrintTable(ns, augs.map(a => a.shortTableData(ns)), Aug.shortTableCols(), DefaultStyle(), ColorPrint);
-  PrintTable(ns, augs.map(a => a.tableData(ns)), Aug.tableCols(), DefaultStyle(), ColorPrint);
+  if (augs.length > 0) {
+    PrintTable(ns, augs.map(a => a.tableData(ns)), Aug.tableCols(), DefaultStyle(), ColorPrint);
+    if (ns.getServerMoneyAvailable('home') >= price)
+      ColorPrint(ns, ['green', `${augs.length} augs final cost: ${ns.formatNumber(price, 1, 1000)}`]);
+    else
+      ColorPrint(ns, ['Red1', `${augs.length} augs final cost: ${ns.formatNumber(price, 1, 1000)}`]);
+  } else {
+    ns.tprintf('  >> Purchasable aug list empty');
+  }
   
   // buy in order from most to least expensive, buying prereqs first
   if (ns.args.length > 0) {
