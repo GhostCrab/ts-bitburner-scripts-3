@@ -6,7 +6,10 @@ export const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
 export const HOME_RESERVE = 512;
 
 export const MS_BETWEEN_OPERATIONS = 10;
-export const HACK_PERCENT = 0.8;
+export const HACK_PERCENT = 0.2;
+export const HACK_PERCENT_MAX = 0.8;
+export const MAX_BATCHES_PER_CYCLE = 2000;
+export const GROW_THREAD_MULT = 1.4;
 
 export function getAllServers(ns: NS): string[] {
   const servers: Set<string> = new Set<string>();

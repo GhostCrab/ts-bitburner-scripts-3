@@ -258,13 +258,7 @@ export async function main(ns: NS) {
   const repProgressEl = new ProgressElement();
   new DividerElement();
 
-  let hackStats: HackStats = {
-    target: "",
-    begin: 0,
-    start: 0,
-    end: 0,
-    gainRate: 0
-  };
+  let hackStats: HackStats = { target: "", begin: 0, start: 0, end: 0, gainRate: 0 };
 
   const hackStatPort = ns.getPortHandle(1);
   
@@ -275,6 +269,8 @@ export async function main(ns: NS) {
 
     if (hackStatPort.peek() !== "NULL PORT DATA")
       hackStats = JSON.parse(hackStatPort.peek().toString());
+    else
+      hackStats = { target: "", begin: 0, start: 0, end: 0, gainRate: 0 };
     
     if (hackStats.target !== "" && (date.getTime() - 5000) > hackStats.end)
       hackStats.target = "";

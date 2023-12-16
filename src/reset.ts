@@ -1,5 +1,7 @@
 import { NS } from "@ns";
 
 export async function main(ns: NS): Promise<void> {
-  ns.tprintf("Hello World");
+  ns.killall();
+  await ns.sleep(30);
+  ns.singularity.softReset('hud.js');
 }

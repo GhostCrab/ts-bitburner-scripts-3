@@ -1,5 +1,5 @@
 import { NS } from "@ns";
-import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, HACK_PERCENT, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
+import { formatTime, getSlaves, getSlaveThreads, getTotalThreads, GROW_THREAD_MULT, HACK_PERCENT, HACK_PERCENT_MAX, MAX_BATCHES_PER_CYCLE, MS_BETWEEN_OPERATIONS, waitForHGWScripts } from "util";
 import { HackStats } from "./hud";
 import { ColorPrint } from "./tables";
 
@@ -108,128 +108,138 @@ function getScriptCalls(batches: IHackBatch[]): IScriptCall[] {
 
 async function cycle(ns: NS, target: string): Promise<void> {
   const slaves = getSlaves(ns);
-  let totalThreads = getTotalThreads(ns, slaves);
-
-  const batches: IHackBatch[] = [];
-
+  
   const baseMSOffset = Math.ceil(ns.getWeakenTime(target));
   const weakenTime = Math.ceil(ns.getWeakenTime(target));
   const growTime = Math.ceil(ns.getGrowTime(target));
   const hackTime = Math.ceil(ns.getHackTime(target));
 
-  // first batch is always GW if the server is not already at min security / max money
-  // find out how many threads are required to grow to max
-  if (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target) ||
-      ns.getServerMoneyAvailable(target) < ns.getServerMaxMoney(target))
-  {
-    const batch = new HackBatch();
-    const baseWeaken = ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
-    const growMult = Math.max(ns.getServerMaxMoney(target) / (ns.getServerMoneyAvailable(target) + 1), 1);
-    batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult));
-    let growSecIncrease = GROW_SEC * batch.growThreads;
-    batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
+  let totalThreads: number;
+  let batches: IHackBatch[];
+  let targetHackPercent = HACK_PERCENT;
+  let actualHackPercent = 0;
 
-    if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
-      growSecIncrease = GROW_SEC * totalThreads;
-      batch.growWeakenThreads = Math.min(Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC), totalThreads);
-      batch.growThreads = totalThreads - batch.growWeakenThreads;
-    }
+  while (true) {
+    totalThreads = getTotalThreads(ns, slaves);
+    batches = [];
 
-    const batchMSOffset = baseMSOffset;
-    batch.weakenTime = weakenTime;
-    batch.growTime = growTime;
-    batch.hackTime = hackTime;
-    batch.growMSBuf = batchMSOffset - batch.growTime + MS_BETWEEN_OPERATIONS;
-    batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
+    // first batch is always GW if the server is not already at min security / max money
+    // find out how many threads are required to grow to max
+    if (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target) ||
+        ns.getServerMoneyAvailable(target) < ns.getServerMaxMoney(target))
+    {
+      const batch = new HackBatch();
+      const baseWeaken = ns.getServerSecurityLevel(target) - ns.getServerMinSecurityLevel(target)
+      const growMult = Math.max(ns.getServerMaxMoney(target) / (ns.getServerMoneyAvailable(target) + 1), 1);
+      batch.growThreads = Math.ceil(ns.growthAnalyze(target, growMult));
+      let growSecIncrease = GROW_SEC * batch.growThreads;
+      batch.growWeakenThreads = Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC);
 
-    batches.push(batch);
-    totalThreads -= batch.totalThreads();
-  }
-
-  while (totalThreads > 0 ) {
-    // from now on assume we are at minimum security, maximum money available
-    const mockTarget = ns.getServer(target);
-    mockTarget.hackDifficulty = ns.getServerMinSecurityLevel(target);
-    mockTarget.moneyAvailable = ns.getServerMaxMoney(target);
-    mockTarget.moneyMax = ns.getServerMaxMoney(target);
-
-    const batch = new HackBatch();
-    const batchMSOffset = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4);
-    
-    batch.weakenTime = weakenTime;
-    batch.growTime = growTime;
-    batch.hackTime = hackTime;
-
-    batch.hackMSBuf =  batchMSOffset - batch.hackTime - MS_BETWEEN_OPERATIONS;
-    batch.hackWeakenMsBuf = batchMSOffset - batch.weakenTime;
-    batch.growMSBuf = batchMSOffset - batch.growTime + MS_BETWEEN_OPERATIONS;
-    batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
-
-    // start with hack 50%
-    batch.hackThreads = Math.ceil(HACK_PERCENT / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
-
-    let missedOnce = false;
-    while (true) {
-      if (batch.hackThreads <= 0) {
-        totalThreads = 0;
-        break;
+      if (batch.growWeakenThreads + batch.growThreads > totalThreads) {
+        growSecIncrease = GROW_SEC * totalThreads;
+        batch.growWeakenThreads = Math.min(Math.ceil((growSecIncrease + baseWeaken) / WEAK_SEC), totalThreads);
+        batch.growThreads = totalThreads - batch.growWeakenThreads;
       }
 
-      const hackPercent = ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()) * batch.hackThreads;
-      const current: number = mockTarget.moneyAvailable;
-      const future = current - (current * hackPercent);
-      mockTarget.moneyAvailable = future;
-      batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(mockTarget, ns.getPlayer(), ns.getServerMaxMoney(target)) * 1.2);
-      mockTarget.moneyAvailable = mockTarget.moneyMax;
-      batch.gain = current - future;
-    
-      batch.hackWeakenThreads = Math.ceil(ns.hackAnalyzeSecurity(batch.hackThreads, target) / WEAK_SEC);
-      batch.growWeakenThreads = Math.ceil(batch.growThreads / (WEAK_SEC / GROW_SEC));
+      const batchMSOffset = baseMSOffset;
+      batch.weakenTime = weakenTime;
+      batch.growTime = growTime;
+      batch.hackTime = hackTime;
+      batch.growMSBuf = batchMSOffset - batch.growTime + MS_BETWEEN_OPERATIONS;
+      batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
 
-      if (batch.totalThreads() <= totalThreads) {
-        totalThreads -= batch.totalThreads();
-        batches.push(batch);
-        
-        if (missedOnce) 
-          totalThreads = 0;
-
-        break;
-      }
-
-      batch.hackThreads = Math.floor(batch.hackThreads * 0.75);
-      missedOnce = true;
+      batches.push(batch);
+      totalThreads -= batch.totalThreads();
     }
 
-    // duplicate batch until there is no space left
-    const batchThreads = batch.totalThreads();
-    const additionalBatches = Math.floor(totalThreads / batchThreads);
-    for (let i = 0; i < additionalBatches; ++i) {
-      const newBatch = new HackBatch;
-      Object.assign(newBatch, batch);
+    while (totalThreads > 0) {
+      // from now on assume we are at minimum security, maximum money available
+      const mockTarget = ns.getServer(target);
+      mockTarget.hackDifficulty = ns.getServerMinSecurityLevel(target);
+      mockTarget.moneyAvailable = ns.getServerMaxMoney(target);
+      mockTarget.moneyMax = ns.getServerMaxMoney(target);
 
+      const batch = new HackBatch();
       const batchMSOffset = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4);
-      newBatch.hackMSBuf =  batchMSOffset - newBatch.hackTime - MS_BETWEEN_OPERATIONS;
-      newBatch.hackWeakenMsBuf = batchMSOffset - newBatch.weakenTime;
-      newBatch.growMSBuf = batchMSOffset - newBatch.growTime + MS_BETWEEN_OPERATIONS;
-      newBatch.growWeakenMSBuf = batchMSOffset - newBatch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
       
-      batches.push(newBatch);
-      totalThreads -= newBatch.totalThreads();
+      batch.weakenTime = weakenTime;
+      batch.growTime = growTime;
+      batch.hackTime = hackTime;
 
-      if(batches.length >= 2000) {
-        totalThreads = 0;
-        break;
+      batch.hackMSBuf =  batchMSOffset - batch.hackTime - MS_BETWEEN_OPERATIONS;
+      batch.hackWeakenMsBuf = batchMSOffset - batch.weakenTime;
+      batch.growMSBuf = batchMSOffset - batch.growTime + MS_BETWEEN_OPERATIONS;
+      batch.growWeakenMSBuf = batchMSOffset - batch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
+
+      batch.hackThreads = Math.ceil(targetHackPercent / ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()));
+
+      let missedOnce = false;
+      while (true) {
+        if (batch.hackThreads <= 0) {
+          totalThreads = 0;
+          break;
+        }
+
+        actualHackPercent = ns.formulas.hacking.hackPercent(mockTarget, ns.getPlayer()) * batch.hackThreads;
+        const current: number = mockTarget.moneyAvailable;
+        const future = current - (current * actualHackPercent);
+        mockTarget.moneyAvailable = future;
+        batch.growThreads = Math.ceil(ns.formulas.hacking.growThreads(mockTarget, ns.getPlayer(), ns.getServerMaxMoney(target)) * GROW_THREAD_MULT);
+        mockTarget.moneyAvailable = mockTarget.moneyMax;
+        batch.gain = current - future;
+      
+        batch.hackWeakenThreads = Math.ceil(ns.hackAnalyzeSecurity(batch.hackThreads, target) / WEAK_SEC);
+        batch.growWeakenThreads = Math.ceil(batch.growThreads / (WEAK_SEC / GROW_SEC));
+
+        if (batch.totalThreads() <= totalThreads) {
+          totalThreads -= batch.totalThreads();
+          batches.push(batch);
+          
+          if (missedOnce) 
+            totalThreads = 0;
+
+          break;
+        }
+
+        batch.hackThreads = Math.floor(batch.hackThreads * 0.75);
+        missedOnce = true;
+      }
+
+      // duplicate batch until there is no space left
+      const batchThreads = batch.totalThreads();
+      const additionalBatches = Math.floor(totalThreads / batchThreads);
+      for (let i = 0; i < additionalBatches; ++i) {
+        const newBatch = new HackBatch;
+        Object.assign(newBatch, batch);
+
+        const batchMSOffset = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4);
+        newBatch.hackMSBuf =  batchMSOffset - newBatch.hackTime - MS_BETWEEN_OPERATIONS;
+        newBatch.hackWeakenMsBuf = batchMSOffset - newBatch.weakenTime;
+        newBatch.growMSBuf = batchMSOffset - newBatch.growTime + MS_BETWEEN_OPERATIONS;
+        newBatch.growWeakenMSBuf = batchMSOffset - newBatch.weakenTime + (MS_BETWEEN_OPERATIONS * 2);
+        
+        batches.push(newBatch);
+        totalThreads -= newBatch.totalThreads();
+
+        if(batches.length >= MAX_BATCHES_PER_CYCLE) {
+          totalThreads = 0;
+          break;
+        }
       }
     }
+
+    if (batches.length < MAX_BATCHES_PER_CYCLE || actualHackPercent >= HACK_PERCENT_MAX || actualHackPercent === 0) break;
+
+    targetHackPercent += 0.1;
   }
 
   const cycleThreads = batches.reduce((count, batch) => count + batch.totalThreads(), 0);
   const cycleGain = batches.reduce((count, batch) => count + batch.gain, 0);
   const cycleTime = baseMSOffset + (batches.length * MS_BETWEEN_OPERATIONS * 4) + (MS_BETWEEN_OPERATIONS * 2);
   if (batches.length > 1)
-    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[1].hackThreads}:HW${batches[1].hackWeakenThreads}:G${batches[1].growThreads}:GW${batches[1].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[1].hackThreads}:HW${batches[1].hackWeakenThreads}:G${batches[1].growThreads}:GW${batches[1].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(actualHackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
   else
-    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[0].hackThreads}:HW${batches[0].hackWeakenThreads}:G${batches[0].growThreads}:GW${batches[0].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Gain | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
+    ns.tprintf(`${target}: ${batches.length} Batches | ${cycleThreads} Threads [H${batches[0].hackThreads}:HW${batches[0].hackWeakenThreads}:G${batches[0].growThreads}:GW${batches[0].growWeakenThreads}] | ${ns.formatNumber(cycleGain, 3, 1000, true)} Total ${(actualHackPercent*100).toFixed(2)}%% | ${formatTime(baseMSOffset)}/${formatTime(cycleTime)} | Gain ${ns.formatNumber(cycleGain / (cycleTime / 1000), 3, 1000, true)}/s`);
   // ns.tprintf(`${target}: First Batch | ht:${batches[0].hackThreads} | hwt:${batches[0].hackWeakenThreads} | gt:${batches[0].growThreads} | gwt:${batches[0].growWeakenThreads}`)
   // ns.tprintf(`${target}: Second Batch | ht:${batches[1].hackThreads} | hwt:${batches[1].hackWeakenThreads} | gt:${batches[1].growThreads} | gwt:${batches[1].growWeakenThreads}`)
   // ns.tprintf(`${target}: Last Batch | ht:${batches[batches.length-1].hackThreads} | hwt:${batches[batches.length-1].hackWeakenThreads} | gt:${batches[batches.length-1].growThreads} | gwt:${batches[batches.length-1].growWeakenThreads}`)
@@ -269,6 +279,8 @@ async function cycle(ns: NS, target: string): Promise<void> {
 
 export async function main(ns: NS): Promise<void> {
   ns.disableLog('ALL');
+
+  ns.atExit(() => { ns.clearPort(1) });
 
   let target = 'nectar-net';
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') target = ns.args[0];

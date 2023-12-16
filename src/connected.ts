@@ -52,6 +52,7 @@ export async function main(ns: NS): Promise<void> {
       ns.getServerNumPortsRequired(s).toString().padStart(6),
       ns.getServerBaseSecurityLevel(s).toString().padStart(9),
       ns.formatRam(ns.getServerMaxRam(s), 0).padStart(7),
+      ns.formatNumber(ns.getServerMoneyAvailable(s),3, 1000, true).padStart(10),
       ns.formatNumber(ns.getServerMaxMoney(s),3, 1000, true).padStart(10)
     ]
   });
@@ -63,6 +64,7 @@ export async function main(ns: NS): Promise<void> {
 		{ header: ' Base Sec', width: 10 },
 		{ header: '    Ram', width: 8 },
 		{ header: '     Money', width: 11 }
+    { header: ' Max Money', width: 11 }
 	];
 
 	PrintTable(ns, data, columns, DefaultStyle(), ColorPrint);
