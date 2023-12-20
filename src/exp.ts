@@ -5,7 +5,6 @@ import { ColorPrint } from "./tables";
 const GROW_SEC = 0.004; // ns.growthAnalyzeSecurity(1, 'omega-net');
 const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
 
-
 let goingFast = false;
 
 interface IHackBatch {
@@ -174,6 +173,8 @@ async function cycle(ns: NS, target: string): Promise<void> {
 
 export async function main(ns: NS): Promise<void> {
   ns.disableLog('ALL');
+
+  goingFast = false;
 
   let target = 'foodnstuff';
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') target = ns.args[0];

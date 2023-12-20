@@ -306,8 +306,8 @@ export async function main(ns: NS): Promise<void> {
   let servers: Server[] = []
 
   if (ns.args.length > 0 && typeof ns.args[0] === 'string') servers = [ns.getServer(ns.args[0])];
-  else servers = dirtyCheck(ns, getAllServers(ns)).map(s => ns.getServer(s));
-  //else servers = getAllServers(ns).map(s => ns.getServer(s)).filter(s => s.moneyMax && s.moneyMax > 0);
+  //else servers = dirtyCheck(ns, getAllServers(ns)).map(s => ns.getServer(s));
+  else servers = getAllServers(ns).map(s => ns.getServer(s)).filter(s => s.moneyMax && s.moneyMax > 0 && s.hasAdminRights);
 
   let currentTargetHost = ''
   let currentTargetRate = 0;
@@ -325,7 +325,7 @@ export async function main(ns: NS): Promise<void> {
     let lastInfo: ICycleStats = { target: s.hostname, start: 0, time: 0, gain: 0, rate: 0 };
     const growInfo: ICyclesToReady = cyclesToReady(ns, ns.getServer(s.hostname));
 
-    const totalCycleCount = 8;
+    const totalCycleCount = 20;
     for (let i = 0; i < totalCycleCount; i++) {
       const cycleInfo = cycle(ns, s);
       if (i === 0) firstInfo = Object.assign({}, cycleInfo);

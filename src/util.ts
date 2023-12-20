@@ -6,7 +6,7 @@ export const WEAK_SEC = 0.05; // ns.weakenAnalyze(1);
 export const HOME_RESERVE = 512;
 
 export const MS_BETWEEN_OPERATIONS = 10;
-export const HACK_PERCENT = 0.2;
+export const HACK_PERCENT = 0.1;
 export const HACK_PERCENT_MAX = 0.8;
 export const MAX_BATCHES_PER_CYCLE = 2000;
 export const GROW_THREAD_MULT = 1.4;
@@ -67,7 +67,8 @@ export function formatTime(time: number, showms = false): string {
 
 export function getSlaves(ns: NS) {
   const servers = getAllServers(ns);
-  return servers.filter(s => ns.getServerMaxRam(s) > 0 && ns.hasRootAccess(s)).sort((a, b) => getSlaveThreads(ns, b) - getSlaveThreads(ns, a));
+  return servers.filter(s => ns.getServerMaxRam(s) > 0 && ns.hasRootAccess(s) && !s.startsWith('hacknet')).sort((a, b) => getSlaveThreads(ns, b) - getSlaveThreads(ns, a));
+  //return servers.filter(s => ns.getServerMaxRam(s) > 0 && ns.hasRootAccess(s)).sort((a, b) => getSlaveThreads(ns, b) - getSlaveThreads(ns, a));
 }
 
 export function getTotalThreads(ns: NS, slaves: string[], homeReserve = HOME_RESERVE) {

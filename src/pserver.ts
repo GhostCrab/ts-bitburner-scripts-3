@@ -2,6 +2,8 @@ import { NS } from "@ns";
 import { PrintTable, ColorPrint, DefaultStyle } from "tables";
 
 export async function main(ns: NS): Promise<void> {
+  console.log(ns.getBitNodeMultipliers());
+
   const ramsizes: number[] = [];
   for (let i = 0; i < 21; i++) {
     ramsizes.push(Math.pow(2, i))
